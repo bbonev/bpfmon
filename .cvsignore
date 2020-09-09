@@ -1,0 +1,5 @@
+.git
+*.o
+bpfmon
+bpfmon-shared
+psort

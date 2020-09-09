@@ -1,0 +1,108 @@
+.TH BPFMON "8" "September 2020"
+.SH NAME
+bpfmon \- BPF based visual packet rate monitor
+.SH SYNOPSIS
+.B bpfmon
+
+.B bpfmon
+[\fI-autzvIiLlnNh\fR]
+<\fIdevice\fR>
+\(aq<\fIbpf_filter_code\fR>\(aq
+
+.B bpfmon
+[\fI-autzvIiLlnNh\fR]
+\fIiptables\fR
+\(aq[<\fItable\fR>] <\fIchain\fR> <\fIrulenum\fR>\(aq
+
+.B bpfmon
+[\fI-autzvIiLlnNh\fR]
+\fIiptables\fR
+[\fIselect\fR]
+.SH DESCRIPTION
+bpfmon (like tcpdump) uses BPF filter to select packets that match the filter.
+While with tcpdump it is easy to see what packets match the filter, bpfmon shows
+how much are the matches packets in terms of bytes per second and packets per
+second.
+.PP
+bpfmon displays the information in pseudo-graphical text interface, developed
+for modern terminals, but it also supports pure ASCII display.
+.PP
+In addition, bpfmon allows instead of monitoring packets matching a BPF filter
+to get its data from an iptables rule (on Linux systems).
+.PP
+In interactive mode, there are hot keys to display help or modify the mode of
+operation.
+.PP
+Without any arguments, bpfmon will display its version and options help.
+.SH OPTIONS
+.TP
+\fB\-a\fR
+Use ASCII drawing characters
+.TP
+\fB\-u\fR
+Use UTF-8 drawing characters
+.TP
+\fB\-t\fR
+Use no interface (simple text output)
+.TP
+\fB\-z\fR
+Use horizontal full-screen interface
+.TP
+\fB\-v\fR
+Use vertical full-screen interface
+.TP
+\fB\-I\fR
+Show history in vertical full-screen
+.TP
+\fB\-i\fR
+Hide history in vertical full-screen
+.TP
+\fB\-L\fR
+Show legend in vertical full-screen
+.TP
+\fB\-l\fR
+Hide legend in vertical full-screen
+\fB\-n\fR
+Show interface white on black
+.TP
+\fB\-N\fR
+Show interface inverse (black on white)
+.TP
+\fB\-h\fR
+Show usage information and exit
+.RE
+.SH KEYBOARD SHORTCUTS
+.TP
+\fBh\fR, \fBH\fR, \fB?\fR
+Toggle help screen
+.TP
+\fBa\fR, \fBA\fR
+switch to ASCII drawing chars
+.TP
+\fBu\fR, \fBU\fR
+switch to UTF-8 drawing chars
+.TP
+\fBm\fR, \fBM\fR
+toggle horizontal/vertical mode
+.TP
+\fBi\fR, \fBI\fR
+toggle history in vertical mode
+.TP
+\fBl\fR, \fBL\fR
+toggle legend in vertical mode
+.TP
+\fBr\fR, \fBR\fR, \fBCtrl-L\fR
+refresh screen
+.TP
+\fBq\fR, \fBQ\fR, \fBCtrl-C\fR
+Exit
+.RE
+.SH SEE ALSO
+.BR tcpdump (8),
+.BR bpf (4),
+.BR pcap-filter (7)
+.SH AUTHOR
+The bpfmon program was written by Boian Bonev from 2014 to 2020.
+.PP
+This manual page was written by Boian Bonev for the
+Debian project and is placed in the public domain.

@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+export NO_FLTO=1
+export PREFIX=/usr
+export STRIP=/bin/true
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+
+%:
+	dh $@ --buildsystem=makefile --without=autoreconf
+
+override_dh_auto_build:
+	dh_auto_build -- \
+		STRIP=: \
+		bpfmon-shared
+
+override_dh_auto_install:
+	install -TD -m755 bpfmon-shared debian/bpfmon/usr/sbin/bpfmon
