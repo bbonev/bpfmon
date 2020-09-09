@@ -1,7 +1,6 @@
 #!/usr/bin/make -f
 export NO_FLTO=1
 export PREFIX=/usr
-export STRIP=/bin/true
 export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 
 %:
@@ -14,3 +13,4 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	install -TD -m755 bpfmon-shared debian/bpfmon/usr/sbin/bpfmon
+	install -TD -m644 bpfmon.8 debian/bpfmon/usr/share/man/man8/bpfmon.8
