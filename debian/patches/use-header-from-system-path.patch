@@ -1,0 +1,21 @@
+Description: Use yascreen.h from system instead of local version
+ Original package includes copy from yascreen library that is packaged
+ separately.
+ .
+ bpfmon (2.46-1) unstable; urgency=medium
+ .
+Author: Boian Bonev <bbonev@ipacct.com>
+Forwarded: not-needed
+Last-Update: 2020-09-09
+
+--- bpfmon-2.46.orig/Makefile
++++ bpfmon-2.46/Makefile
+@@ -40,7 +40,7 @@ MYLDFLAGS=$(LDFLAGS)
+ 
+ STRIP?=strip
+ 
+-bpfmon.o: bpfmon.c yascreen.h
++bpfmon.o: bpfmon.c
+ 	$(CC) $(MYCFLAGS) -c bpfmon.c -o bpfmon.o
+ 
+ yascreen.o: yascreen.c yascreen.h
