@@ -17,7 +17,7 @@ Architecture: any
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
-Description: Traffic monitor for BPF expression/iptables rule
+Description: traffic monitor for BPF expression/iptables rule
  While tcpdump shows what packets are going through the
  network, bpfmon will show how much in terms
  of bytes per second and packets per second in a
