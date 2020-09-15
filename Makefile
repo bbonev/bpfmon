@@ -1,3 +1,13 @@
+# Copyright © 2015-2020 Boian Bonev (bbonev@ipacct.com) {{{
+#
+# SPDX-License-Identifer: GPL-2.0-or-later
+#
+# This file is part of bpfmon - traffic monitor for BPF and iptables
+#
+# bpfmon is free software, releasead under the terms of GNU General Public License v2.0 or later
+#
+# }}}
+
 all: bpfmon psort
 
 DEBUG:=-DDEBUG=1 -O0 -g3 -fno-inline -fstack-protector-all

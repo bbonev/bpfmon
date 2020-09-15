@@ -1,4 +1,13 @@
-// $Id: bpfmon.c,v 2.46 2020/08/13 00:54:05 bbonev Exp $
+// $Id: bpfmon.c,v 2.48 2020/09/15 15:01:15 bbonev Exp $ {{{
+// Copyright © 2015-2020 Boian Bonev (bbonev@ipacct.com)
+//
+// SPDX-License-Identifer: GPL-2.0-or-later
+//
+// This file is part of bpfmon - traffic monitor for BPF and iptables
+//
+// bpfmon is free software, releasead under the terms of GNU General Public License v2.0 or later
+//
+// }}}
 
 // {{{ includes
 #define _GNU_SOURCE
@@ -104,7 +113,7 @@ static char **drlevels=levels_utf8; // graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.46 $";
+static char ver[]="$Revision: 2.48 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
