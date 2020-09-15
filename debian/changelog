@@ -1,3 +1,9 @@
+bpfmon (2.46-2) unstable; urgency=medium
+
+  * Do not capitalize short description
+
+ -- Boian Bonev <bbonev@ipacct.com>  Tue, 15 Sep 2020 14:05:42 +0000
+
 bpfmon (2.46-1) unstable; urgency=medium
 
   * Initial release (Closes: #969931)
