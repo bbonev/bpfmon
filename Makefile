@@ -13,7 +13,7 @@ all: bpfmon psort
 DEBUG:=-DDEBUG=1 -O0 -g3 -fno-inline -fstack-protector-all
 DEBUG:=-O3
 
-LIBS:=-lpcap
+LIBS:=-lpcap -lyascreen
 
 VER=$(shell grep Revision bpfmon.c|head -n1|sed -e 's/.\+Revision: \([0-9.]\+\) \+.\+/\1/')
 
@@ -50,43 +50,40 @@ MYLDFLAGS=$(LDFLAGS)
 
 STRIP?=strip
 
-bpfmon.o: bpfmon.c yascreen.h
+bpfmon.o: bpfmon.c
 	$(CC) $(MYCFLAGS) -c bpfmon.c -o bpfmon.o
 
-yascreen.o: yascreen.c yascreen.h
-	$(CC) $(MYCFLAGS) -c yascreen.c -o yascreen.o
-
-bpfmon: bpfmon.o yascreen.o
-	$(CC) $(MYCFLAGS) -o bpfmon bpfmon.o yascreen.o $(LIBS)
+bpfmon: bpfmon.o
+	$(CC) $(MYCFLAGS) $(MYLDFLAGS) -o bpfmon bpfmon.o $(LIBS)
 	$(STRIP) bpfmon
 
-bpfmon-shared: bpfmon.o
-	$(CC) $(MYCFLAGS) $(MYLDFLAGS) -o bpfmon-shared bpfmon.o $(LIBS) -lyascreen
-	$(STRIP) bpfmon-shared
+psort.o: psort.c
+	$(CC) $(MYCFLAGS) -c psort.c -o psort.o
 
-psort.o: psort.c yascreen.h
-	$(CC) $(CCOPT) -c psort.c -o psort.o
-
-psort: psort.o yascreen.o
-	$(CC) $(CCOPT) -o psort psort.o yascreen.o $(LIBS)
+psort: psort.o
+	$(CC) $(MYCFLAGS) $(MYLDFLAGS) -o psort psort.o $(LIBS)
 	$(STRIP) psort
 
 clean:
-	rm -f bpfmon bpfmon-shared bpfmon.o yascreen.o psort psort.o
+	rm -f bpfmon bpfmon.o psort psort.o
 
-install: bpfmon-shared
+install: bpfmon
 	$(INSTALL) -TD -m 0755 $< $(DESTDIR)$(PREFIX)/sbin/$<
 	$(STRIP) $<
 
 mkotar:
 	$(MAKE) clean
-	#dh_clean
+	-dh_clean
 	tar \
+		--xform 's,^[.],bpfmon-$(VER),' \
 		--exclude ./.git \
+		--exclude ./.gitignore \
+		--exclude ./.cvsignore \
 		--exclude ./CVS \
-		--exclude ./debian/CVS \
-		--exclude ./debian/source/CVS \
+		--exclude ./debian \
 		-Jcvf ../bpfmon_$(VER).orig.tar.xz .
 	-rm -f ../bpfmon_$(VER).orig.tar.xz.asc
 	gpg -a --detach-sign ../bpfmon_$(VER).orig.tar.xz
+	cp -fa ../bpfmon_$(VER).orig.tar.xz ../bpfmon-$(VER).tar.xz
+	cp -fa ../bpfmon_$(VER).orig.tar.xz.asc ../bpfmon-$(VER).tar.xz.asc
 
