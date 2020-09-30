@@ -13,7 +13,22 @@ all: bpfmon psort
 DEBUG:=-DDEBUG=1 -O0 -g3 -fno-inline -fstack-protector-all
 DEBUG:=-O3
 
-LIBS:=-lpcap -lyascreen
+PKG_CONFIG?=pkg-config
+YASCC?=$(shell $(PKG_CONFIG) --cflags yascreen)
+YASLD?=$(shell $(PKG_CONFIG) --libs yascreen)
+ifeq ("$(YASLD)","")
+YASCC:=-lyascreen
+YASLD:=
+endif
+PCACC?=$(shell $(PKG_CONFIG) --cflags libpcap)
+PCALD?=$(shell $(PKG_CONFIG) --libs libpcap)
+ifeq ("$(PCALD)","")
+PCACC:=-lpcap
+PCALD:=
+endif
+
+LIBS:=$(YASLD) $(PCALD)
+CFLAGS+=$(YASCC) $(PCACC)
 
 VER=$(shell grep Revision bpfmon.c|head -n1|sed -e 's/.\+Revision: \([0-9.]\+\) \+.\+/\1/')
 
