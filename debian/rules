@@ -9,8 +9,8 @@ export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 override_dh_auto_build:
 	dh_auto_build -- \
 		STRIP=: \
-		bpfmon-shared
+		bpfmon
 
 override_dh_auto_install:
-	install -TD -m755 bpfmon-shared debian/bpfmon/usr/sbin/bpfmon
+	install -TD -m755 bpfmon debian/bpfmon/usr/sbin/bpfmon
 	install -TD -m644 bpfmon.8 debian/bpfmon/usr/share/man/man8/bpfmon.8
