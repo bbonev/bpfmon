@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.48 2020/09/15 15:01:15 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.49 2020/10/02 19:39:24 bbonev Exp $ {{{
 // Copyright © 2015-2020 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -113,7 +113,7 @@ static char **drlevels=levels_utf8; // graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.48 $";
+static char ver[]="$Revision: 2.49 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -988,7 +988,8 @@ int main(int ac,char **av) { // {{{
 		FD_SET(STDIN_FILENO,&r);
 		fdmax=STDIN_FILENO;
 		if (source==PCAP) {
-			FD_SET(pcfd,&r);
+			if (pcfd>=0) // e.g. on Hurd libpcap does not support events via fd
+				FD_SET(pcfd,&r);
 			fdmax=mymax(fdmax,pcfd);
 		}
 		to.tv_sec=0;
@@ -1149,7 +1150,7 @@ int main(int ac,char **av) { // {{{
 					}
 				}
 			}
-			if (source==PCAP&&FD_ISSET(pcfd,&r))
+			if (pcfd<0||(source==PCAP&&FD_ISSET(pcfd,&r)))
 				pcap_dispatch(pc,10000,pc_cb,NULL);
 		}
 		if (toexit)
