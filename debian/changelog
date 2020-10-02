@@ -1,6 +1,9 @@
-bpfmon (2.48-1) unstable; urgency=medium
+bpfmon (2.49-1) unstable; urgency=medium
 
-  * Do not capitalize short description
+  * Update to new upstream release of 2.48
+    - Do not capitalize short description
+  * Update to new upstream release of 2.49
+    - Fix OOB on Hurd because libpcap does not support pcap_get_selectable_fd
 
  -- Boian Bonev <bbonev@ipacct.com>  Tue, 15 Sep 2020 14:05:42 +0000
 
