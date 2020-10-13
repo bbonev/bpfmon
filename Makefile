@@ -36,14 +36,14 @@ ifeq ($(CC),tcc)
 CCOPT:=-Wall -I.
 else
 ifeq ($(CC),clang)
-CCOPT:=-Wall -Wextra -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -I. --std=gnu89
+CCOPT:=-Wall -Wextra -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -I. --std=gnu89 -fPIE
 else
 ifeq ($(shell uname -s),OpenBSD)
 ifeq ($(CC),cc)
 CC:=egcc
 endif
 endif
-CCOPT:=-Wall -Wextra -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -I. --std=gnu89
+CCOPT:=-Wall -Wextra -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -I. --std=gnu89 -fPIE
 endif
 endif
 ifeq ($(CC),egcc)
@@ -61,7 +61,7 @@ endif
 endif
 
 MYCFLAGS=$(DEBUG) $(CPPFLAGS) $(CFLAGS) $(CCOPT)
-MYLDFLAGS=$(LDFLAGS)
+MYLDFLAGS=$(LDFLAGS) -fPIE -pie
 
 STRIP?=strip
 
