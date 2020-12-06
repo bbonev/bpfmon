@@ -96,6 +96,7 @@ mkotar:
 		--exclude ./.cvsignore \
 		--exclude ./CVS \
 		--exclude ./debian \
+		--exclude ./fedora \
 		-Jcvf ../bpfmon_$(VER).orig.tar.xz .
 	-rm -f ../bpfmon_$(VER).orig.tar.xz.asc
 	gpg -a --detach-sign ../bpfmon_$(VER).orig.tar.xz
