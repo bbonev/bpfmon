@@ -5,8 +5,8 @@ Summary:        Traffic monitor for BPF expression/iptables rule
 
 License:        GPLv2+
 URL:            https://github.com/bbonev/bpfmon/
-Source0:        https://github.com/bbonev/bpfmon/releases/download/v%{version}/bpfmon-%{version}.tar.xz
-Source1:        https://github.com/bbonev/bpfmon/releases/download/v%{version}/bpfmon-%{version}.tar.xz.asc
+Source0:        %{url}releases/download/v%{version}/bpfmon-%{version}.tar.xz
+Source1:        %{url}releases/download/v%{version}/bpfmon-%{version}.tar.xz.asc
 Source2:        https://raw.githubusercontent.com/bbonev/bpfmon/v%{version}/debian/upstream/signing-key.asc
 
 BuildRequires:  gcc
