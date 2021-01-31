@@ -4,7 +4,7 @@
 #
 # This file is part of bpfmon - traffic monitor for BPF and iptables
 #
-# bpfmon is free software, releasead under the terms of GNU General Public License v2.0 or later
+# bpfmon is free software, released under the terms of GNU General Public License v2.0 or later
 #
 # }}}
 
