@@ -5,6 +5,7 @@ bpfmon (2.50-1) unstable; urgency=medium
     - Saner output on Linux console in Unicode mode
     - Smooth graphs in horizontal mode (Unicode)
   * Bump standards to 4.6.0, no changes
+  * Let debian/watch use the signed releases
 
  -- Boian Bonev <bbonev@ipacct.com>  Tue, 21 Sep 2021 02:19:38 +0000
 
