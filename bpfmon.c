@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.50 2021/09/21 02:12:59 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.50 2021/09/21 05:02:51 bbonev Exp $ {{{
 // Copyright © 2015-2020 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -70,27 +70,30 @@ typedef struct _s_ipt {
 	int rulenum;
 } s_ipt;
 
-static char *sp_chars_utf8[]={
-	"─","█","…","━"," ",
+static const char *sp_chars_utf8[]={
+	"─","…",
 	"(",")",
 	"•",
 };
 
-static char *sp_chars_asci[]={
-	"_","|",">","="," ",
+static const char *sp_chars_asci[]={
+	"_",">",
 	"(",")",
 	"*",
 };
 
-static char *levels_utfp[]={" "," "," ","▄","▄","▄","█","█"}; // partial utf support on linux console
-static char *levels_utff[]={" ","▁","▂","▃","▄","▅","▆","▇"}; // full utf support
-static char *levels_asci[]={" "," ",".",".",":",":","|","|"};
-
 typedef enum {
-	D_M,D_I,D_ELL,D_EQ,D_D,
+	D_M,D_ELL,
 	D_BO,D_BC,
 	D_EMPTY,
 } e_drc;
+
+static const char *levels_h_utfp[]={" "," "," ","▌","▌","▌","█","█","█"}; // (H) partial utf support on linux console
+static const char *levels_h_utff[]={" ","▏","▎","▍","▌","▋","▊","▉","█"}; // (H) full utf support
+static const char *levels_h_asci[]={" "," ",".",".","-","-","=","=","="}; // (H) ASCII mode
+static const char *levels_v_utfp[]={" "," "," ","▄","▄","▄","█","█","█"}; // (V) partial utf support on linux console
+static const char *levels_v_utff[]={" ","▁","▂","▃","▄","▅","▆","▇","█"}; // (V) full utf support
+static const char *levels_v_asci[]={" "," ",".",".",":",":","|","|","|"}; // (V) ASCII mode
 
 /* braile graph up/down
 ⠀⢀⢠⢰⢸
@@ -109,9 +112,11 @@ typedef enum {
 
 // {{{ globals
 static yascreen *s;
-static char **levels_utf8=levels_utff; // full utf8 support, this will be changed on linux term
-static char **drchars=sp_chars_utf8; // frame draw characters
-static char **drlevels=levels_utff; // graph draw characters
+static const char **drchars=sp_chars_utf8; // frame draw characters
+static const char **levels_v_utf8=levels_v_utff; // (V) full utf8 support, this will be changed on linux term
+static const char **levels_h_utf8=levels_h_utff; // (H) full utf8 support, this will be changed on linux term
+static const char **drlevels_v=levels_v_utff; // (V) graph draw characters
+static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
@@ -301,17 +306,17 @@ static inline void draw(s_grf *g,int x,int y,int sx,int sy) { // {{{
 				yascreen_putsxy(s,x+i-1,y+j-1,DA|inverse," ");
 			else {
 				int64_t vhr=((g->data[g->count-i-1]-mi)*sy*8)/((!ma)?1:ma);
+				const char *prch;
 				int64_t v=vhr/8;
 				uint8_t r=vhr%8;
-				char *prch;
 
 				if (v>(sy-j-1)&&v>(sy-j))
-					prch=drchars[D_I];
+					prch=drlevels_v[8];
 				else {
 					if (v>(sy-j-1))
-						prch=drlevels[r];
+						prch=drlevels_v[r];
 					else
-						prch=drchars[D_D];
+						prch=drlevels_v[0];
 				}
 				yascreen_putsxy(s,x+i-1,y+j-1,DA|inverse,prch);
 			}
@@ -383,16 +388,43 @@ static inline void drawh(s_bpf *g,int x,int y,int sx,int sy) { // {{{
 		if (j>=cnt)
 			yascreen_printxy(s,x-1,y+j-1,DA|inverse,"%*s",sx,"");
 		else {
-			int64_t vb=((g->bts.data[off+j]-bmi)*grs)/((!bma)?1:bma);
-			int64_t vp=((g->pks.data[off+j]-pmi)*grs)/((!pma)?1:pma);
+			int64_t vbr=((g->bts.data[off+j]-bmi)*grs*8)/((!bma)?1:bma);
+			int64_t vpr=((g->pks.data[off+j]-pmi)*grs*8)/((!pma)?1:pma);
 			char bs[20],ps[20];
+			const char *prchb;
+			const char *prchp;
+			int64_t vb=vbr/8;
+			int64_t vp=vpr/8;
+			uint8_t rb=vbr%8;
+			uint8_t rp=vpr%8;
+			uint32_t inv;
 
 			sprintsi(bs,sizeof bs,g->bts.data[off+j]);
 			sprintsi(ps,sizeof ps,g->pks.data[off+j]);
 			yascreen_printxy(s,x-1+tpos,y+j-1,DA|inverse," %8s %8s ",bs,ps);
 			for (i=0;i<grs;i++) {
-				yascreen_putsxy(s,x-1+i+g1pos,y-1+j,DA|inverse,(vb>(grs-i-1))?drchars[D_EQ]:drchars[D_D]);
-				yascreen_putsxy(s,x-1+i+g2pos,y-1+j,DA|inverse,(vp>i)?drchars[D_EQ]:drchars[D_D]);
+				inv=0;
+				if (vb<(grs-i-1))
+					prchb=drlevels_h[0];
+				else {
+					if (vb>(grs-i-1))
+						prchb=drlevels_h[8];
+					else {
+						prchb=drlevels_h[rb];
+						if (drchars==sp_chars_utf8)
+							inv=YAS_INVERSE;
+					}
+				}
+				if (vp<i)
+					prchp=drlevels_h[0];
+				else {
+					if (vp>i)
+						prchp=drlevels_h[8];
+					else
+						prchp=drlevels_h[rp];
+				}
+				yascreen_putsxy(s,x-1+i+g1pos,y-1+j,(DA|inverse)^inv,prchb);
+				yascreen_putsxy(s,x-1+i+g2pos,y-1+j,DA|inverse,prchp);
 			}
 		}
 	}
@@ -634,11 +666,13 @@ int main(int ac,char **av) { // {{{
 						break;
 					case 'a':
 						drchars=sp_chars_asci;
-						drlevels=levels_asci;
+						drlevels_h=levels_h_asci;
+						drlevels_v=levels_v_asci;
 						break;
 					case 'u': // no need to check for noutf8, because it is set below and will override this
 						drchars=sp_chars_utf8;
-						drlevels=levels_utf8;
+						drlevels_h=levels_h_utf8;
+						drlevels_v=levels_v_utf8;
 						break;
 					case 't':
 						simplest=1;
@@ -773,8 +807,10 @@ int main(int ac,char **av) { // {{{
 
 		signal(SIGWINCH,sigwinch);
 
-		if (term&&!strcmp(term,"linux")) // silly check for linux console
-			drlevels=levels_utf8=levels_utfp;
+		if (term&&!strcmp(term,"linux")) { // silly check for linux console
+			drlevels_h=levels_h_utf8=levels_h_utfp;
+			drlevels_v=levels_v_utf8=levels_v_utfp;
+		}
 
 		if (setlocale(LC_CTYPE,"C.UTF-8")) // try if unicode is supported
 			has_unicode=1;
@@ -785,7 +821,8 @@ int main(int ac,char **av) { // {{{
 
 		if (!has_unicode) { // utf8 is not supported, disable utf mode and force to ascii
 			drchars=sp_chars_asci;
-			drlevels=levels_asci;
+			drlevels_h=levels_h_asci;
+			drlevels_v=levels_v_asci;
 			noutf8=1;
 		}
 
@@ -1018,7 +1055,7 @@ int main(int ac,char **av) { // {{{
 			if (!simplest) {
 				int64_t now=mytime();
 
-				if (now-lastroll>100) {
+				if (now-lastroll>=500) {
 					heartbeat=!heartbeat;
 					lastroll=now;
 					if (wssx>14) {
@@ -1061,7 +1098,8 @@ int main(int ac,char **av) { // {{{
 				if (ch=='a'||ch=='A') {
 					if (drchars!=sp_chars_asci) {
 						drchars=sp_chars_asci;
-						drlevels=levels_asci;
+						drlevels_h=levels_h_asci;
+						drlevels_v=levels_v_asci;
 						winch++;
 					}
 				}
@@ -1069,7 +1107,8 @@ int main(int ac,char **av) { // {{{
 					if (drchars!=sp_chars_utf8) {
 						if (!noutf8) {
 							drchars=sp_chars_utf8;
-							drlevels=levels_utf8;
+							drlevels_h=levels_h_utf8;
+							drlevels_v=levels_v_utf8;
 							winch++;
 						}
 					}
