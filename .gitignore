@@ -1,7 +1,4 @@
 CVS
 *.o
 bpfmon
-bpfmon-shared
 psort
-bpfmon.mk
-yascreen.[ch]
