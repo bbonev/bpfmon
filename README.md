@@ -106,5 +106,5 @@ Use the following commands (note that `-y` disables confirmation prompts):
 
 ### How to install as a system command
 
-sudo make install
+    sudo make install
 
