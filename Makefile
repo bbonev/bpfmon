@@ -17,39 +17,37 @@ PKG_CONFIG?=pkg-config
 YASCC?=$(shell $(PKG_CONFIG) --cflags yascreen)
 YASLD?=$(shell $(PKG_CONFIG) --libs yascreen)
 ifeq ("$(YASLD)","")
-YASCC:=-lyascreen
-YASLD:=
+YASCC:=
+YASLD:=-lyascreen
 endif
 PCACC?=$(shell $(PKG_CONFIG) --cflags libpcap)
 PCALD?=$(shell $(PKG_CONFIG) --libs libpcap)
 ifeq ("$(PCALD)","")
-PCACC:=-lpcap
-PCALD:=
+PCACC:=
+PCALD:=-lpcap
 endif
-
-LIBS:=$(YASLD) $(PCALD)
-CFLAGS+=$(YASCC) $(PCACC)
 
 VER=$(shell grep Revision bpfmon.c|head -n1|sed -e 's/.\+Revision: \([0-9.]\+\) \+.\+/\1/')
 
 ifeq ($(CC),tcc)
-CCOPT:=-Wall -I.
+CCOPT:=-Wall
 else
 ifeq ($(CC),clang)
-CCOPT:=-Wall -Wextra -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -I. --std=gnu89 -fPIE
+CCOPT:=-Wall -Wextra -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 --std=gnu89 -fPIE
 else
 ifeq ($(shell uname -s),OpenBSD)
 ifeq ($(CC),cc)
 CC:=egcc
 endif
 endif
-CCOPT:=-Wall -Wextra -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -I. --std=gnu89 -fPIE
+CCOPT:=-Wall -Wextra -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 --std=gnu89 -fPIE
 endif
 endif
+
+ifndef NO_FLTO
 ifeq ($(CC),egcc)
 CCOPT+=-flto
 endif
-ifndef NO_FLTO
 ifeq ($(shell uname -s),Linux)
 ifeq ($(CC),cc)
 CCOPT+=-flto
@@ -60,8 +58,9 @@ endif
 endif
 endif
 
-MYCFLAGS=$(DEBUG) $(CPPFLAGS) $(CFLAGS) $(CCOPT)
-MYLDFLAGS=$(LDFLAGS) -fPIE -pie
+MYCFLAGS=$(DEBUG) $(CPPFLAGS) $(CFLAGS) $(YASCC) $(PCACC) $(CCOPT)
+MYLIBS:=$(LIBS) $(YASLD) $(PCALD)
+MYLDFLAGS:=$(LDFLAGS) -fPIE -pie
 
 STRIP?=strip
 INSTALL?=install
@@ -70,22 +69,20 @@ bpfmon.o: bpfmon.c
 	$(CC) $(MYCFLAGS) -c bpfmon.c -o bpfmon.o
 
 bpfmon: bpfmon.o
-	$(CC) $(MYCFLAGS) $(MYLDFLAGS) -o bpfmon bpfmon.o $(LIBS)
-	$(STRIP) bpfmon
+	$(CC) $(MYCFLAGS) $(MYLDFLAGS) -o bpfmon bpfmon.o $(MYLIBS)
 
 psort.o: psort.c
 	$(CC) $(MYCFLAGS) -c psort.c -o psort.o
 
 psort: psort.o
-	$(CC) $(MYCFLAGS) $(MYLDFLAGS) -o psort psort.o $(LIBS)
-	$(STRIP) psort
+	$(CC) $(MYCFLAGS) $(MYLDFLAGS) -o psort psort.o $(MYLIBS)
 
 clean:
 	rm -f bpfmon bpfmon.o psort psort.o
 
 install: bpfmon
 	$(INSTALL) -TD -m 0755 $< $(DESTDIR)$(PREFIX)/sbin/$<
-	$(STRIP) $<
+	$(STRIP) $(DESTDIR)$(PREFIX)/sbin/$<
 
 mkotar:
 	$(MAKE) clean
@@ -93,11 +90,12 @@ mkotar:
 	tar \
 		--xform 's,^[.],bpfmon-$(VER),' \
 		--exclude ./.git \
+		--exclude ./.sample \
 		--exclude ./.gitignore \
 		--exclude ./.cvsignore \
 		--exclude ./CVS \
+		--exclude ./fedora/CVS \
 		--exclude ./debian \
-		--exclude ./fedora \
 		-Jcvf ../bpfmon_$(VER).orig.tar.xz .
 	-rm -f ../bpfmon_$(VER).orig.tar.xz.asc
 	gpg -a --detach-sign ../bpfmon_$(VER).orig.tar.xz
