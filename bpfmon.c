@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.50 2021/09/21 00:42:38 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.50 2021/09/21 01:52:57 bbonev Exp $ {{{
 // Copyright © 2015-2020 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -81,7 +81,8 @@ static char *sp_chars_asci[]={
 	"*",
 };
 
-static char *levels_utf8[]={" ","▁","▂","▃","▄","▅","▆","▇"};
+static char *levels_utfp[]={" "," "," ","▄","▄","▄","█","█"}; // partial utf support on linux console
+static char *levels_utff[]={" ","▁","▂","▃","▄","▅","▆","▇"}; // full utf support
 static char *levels_asci[]={" "," ",".",".",":",":","|","|"};
 
 typedef enum {
@@ -107,8 +108,9 @@ typedef enum {
 
 // {{{ globals
 static yascreen *s;
+static char **levels_utf8=levels_utff; // full utf8 support, this will be changed on linux term
 static char **drchars=sp_chars_utf8; // frame draw characters
-static char **drlevels=levels_utf8; // graph draw characters
+static char **drlevels=levels_utff; // graph draw characters
 
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
@@ -542,9 +544,11 @@ static inline void ipt_data_fetch(void) { // {{{
 int main(int ac,char **av) { // {{{
 	unsigned gsx=0,gsy=0,gx=(history?(TSIZE+2):0)+(legend?(LSIZE+2):0)+((!legend&&!history)?1:0),g1y=2,g2y=2;
 	char ebuf[PCAP_ERRBUF_SIZE];
+	char *term=getenv("TERM");
 	int64_t lastroll=0;
 	struct timeval to;
 	int wssx=0,wssy=0;
+	int has_unicode=0;
 	time_t lastt=0;
 	char ts[100];
 	char *p,*q;
@@ -767,11 +771,23 @@ int main(int ac,char **av) { // {{{
 		}
 
 		signal(SIGWINCH,sigwinch);
-		if (!setlocale(LC_CTYPE,"C.UTF-8")) { // cannot set utf8 locale, disable utf mode and force to ascii
+
+		if (term&&!strcmp(term,"linux")) // silly check for linux console
+			drlevels=levels_utf8=levels_utfp;
+
+		if (setlocale(LC_CTYPE,"C.UTF-8")) // try if unicode is supported
+			has_unicode=1;
+		else
+			if (setlocale(LC_CTYPE,""))
+				if (!strcmp("UTF-8",nl_langinfo(CODESET)))
+					has_unicode=1;
+
+		if (!has_unicode) { // utf8 is not supported, disable utf mode and force to ascii
 			drchars=sp_chars_asci;
 			drlevels=levels_asci;
 			noutf8=1;
 		}
+
 		setbuf(stdout,NULL);
 		s=yascreen_init(0,0); // let yascreen get term size
 		if (!s) {
