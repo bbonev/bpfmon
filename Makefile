@@ -90,12 +90,12 @@ mkotar:
 	tar \
 		--xform 's,^[.],bpfmon-$(VER),' \
 		--exclude ./.git \
-		--exclude ./.sample \
 		--exclude ./.gitignore \
 		--exclude ./.cvsignore \
 		--exclude ./CVS \
-		--exclude ./fedora/CVS \
 		--exclude ./debian \
+		--exclude ./fedora/CVS \
+		--exclude ./.sample/CVS \
 		-Jcvf ../bpfmon_$(VER).orig.tar.xz .
 	-rm -f ../bpfmon_$(VER).orig.tar.xz.asc
 	gpg -a --detach-sign ../bpfmon_$(VER).orig.tar.xz
