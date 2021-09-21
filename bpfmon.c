@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.50 2021/09/21 01:52:57 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.50 2021/09/21 02:12:59 bbonev Exp $ {{{
 // Copyright © 2015-2020 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -21,6 +21,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <langinfo.h>
 #include <sys/time.h>
 
 #include <yascreen.h>
