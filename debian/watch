@@ -1,7 +1,7 @@
 version=4
 
 opts=\
-	"filenamemangle=s%(?:.*?)?v?(\d[\d.]*)\.tar\.gz%bpfmon_$1.orig.tar.gz%,pgpsigurlmangle=s/archive\/v([0-9.]+)\.tar\.gz/releases\/download\/v$1\/bpfmon-$1\.tar\.gz\.asc/" \
-	https://github.com/bbonev/bpfmon/tags \
-	(?:.*?/)?v?(\d[\d.]*)\.tar\.gz \
+	"filenamemangle=s%(?:.*?)?bpfmon-?(\d[\d.]*)\.tar\.xz%bpfmon_$1.orig.tar.xz%,pgpsigurlmangle=s/releases\/download\/v([0-9.]+)\/bpfmon-([0-9.]+)\.tar\.xz/releases\/download\/v$1\/bpfmon-$1\.tar\.xz\.asc/" \
+	https://github.com/bbonev/bpfmon/releases \
+	(?:.*?/)?bpfmon-?(\d[\d.]*)\.tar\.xz \
 	debian uupdate
