@@ -1,5 +1,5 @@
-// $Id: bpfmon.c,v 2.50 2021/09/21 05:02:51 bbonev Exp $ {{{
-// Copyright © 2015-2020 Boian Bonev (bbonev@ipacct.com)
+// $Id: bpfmon.c,v 2.50 2021/09/21 05:19:23 bbonev Exp $ {{{
+// Copyright © 2015-2021 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
 //
@@ -411,7 +411,7 @@ static inline void drawh(s_bpf *g,int x,int y,int sx,int sy) { // {{{
 						prchb=drlevels_h[8];
 					else {
 						prchb=drlevels_h[rb];
-						if (drchars==sp_chars_utf8)
+						if (vbr>0&&drchars==sp_chars_utf8)
 							inv=YAS_INVERSE;
 					}
 				}
