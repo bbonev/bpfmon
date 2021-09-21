@@ -64,6 +64,7 @@ MYCFLAGS=$(DEBUG) $(CPPFLAGS) $(CFLAGS) $(CCOPT)
 MYLDFLAGS=$(LDFLAGS) -fPIE -pie
 
 STRIP?=strip
+INSTALL?=install
 
 bpfmon.o: bpfmon.c
 	$(CC) $(MYCFLAGS) -c bpfmon.c -o bpfmon.o
