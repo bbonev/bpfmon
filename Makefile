@@ -81,7 +81,8 @@ clean:
 	rm -f bpfmon bpfmon.o psort psort.o
 
 install: bpfmon
-	$(INSTALL) -TD -m 0755 $< $(DESTDIR)$(PREFIX)/sbin/$<
+	$(INSTALL) -D -m 0755 $< $(DESTDIR)$(PREFIX)/sbin/$<
+	$(INSTALL) -D -m 0644 bpfmon.8 $(DESTDIR)$(PREFIX)/share/man/man8/bpfmon.8
 	$(STRIP) $(DESTDIR)$(PREFIX)/sbin/$<
 
 mkotar:
