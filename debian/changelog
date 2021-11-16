@@ -1,7 +1,7 @@
 bpfmon (2.49-1~bpo10+1) buster-backports; urgency=medium
 
   * Rebuild for buster-backports.
-    - No changes
+    - Decrease dh to 12
 
  -- Boian Bonev <bbonev@ipacct.com>  Tue, 16 Nov 2021 13:24:46 +0000
 
