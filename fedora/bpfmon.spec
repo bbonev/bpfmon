@@ -1,6 +1,6 @@
 Name:           bpfmon
-Version:        2.50
-Release:        4%{?dist}
+Version:        2.51
+Release:        1%{?dist}
 Summary:        Traffic monitor for BPF expression/iptables rule
 
 License:        GPLv2+
@@ -45,6 +45,9 @@ install -TD -m 0644 bpfmon.8 $RPM_BUILD_ROOT/%{_mandir}/man8/bpfmon.8
 %{_mandir}/man8/bpfmon.8*
 
 %changelog
+* Tue Sep 21 2021 Boian Bonev <bbonev@ipacct.com> - 2.51-1
+- New version 2.51
+
 * Mon Jan 2 2023 Boian Bonev <bbonev@ipacct.com> - 2.50-4
 - Rebuilt for yascreen soname bump
 
