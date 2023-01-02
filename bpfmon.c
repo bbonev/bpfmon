@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.50 2021/09/21 05:19:23 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.51 2023/01/02 22:35:44 bbonev Exp $ {{{
 // Copyright © 2015-2021 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -121,7 +121,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.50 $";
+static char ver[]="$Revision: 2.51 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -1071,7 +1071,7 @@ int main(int ac,char **av) { // {{{
 			if (FD_ISSET(STDIN_FILENO,&r)&&sizeof c==read(STDIN_FILENO,&c,sizeof c))
 				yascreen_feed(s,c); // pump state machine with bytestream
 
-			while ((ch=yascreen_getch_nowait(s))!=-1) { // a key can be yielded by the pump above or by timeout (single ESC)
+			while ((ch=yascreen_getch_nowait(s))!=YAS_K_NONE) { // a key can be yielded by the pump above or by timeout (single ESC)
 				if (ch=='q'||ch=='Q'||ch==0x03) { // also ^C
 					toexit=1;
 					break;
