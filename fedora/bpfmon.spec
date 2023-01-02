@@ -1,6 +1,6 @@
 Name:           bpfmon
-Version:        2.49
-Release:        1%{?dist}
+Version:        2.50
+Release:        4%{?dist}
 Summary:        Traffic monitor for BPF expression/iptables rule
 
 License:        GPLv2+
@@ -45,5 +45,23 @@ install -TD -m 0644 bpfmon.8 $RPM_BUILD_ROOT/%{_mandir}/man8/bpfmon.8
 %{_mandir}/man8/bpfmon.8*
 
 %changelog
+* Mon Jan 2 2023 Boian Bonev <bbonev@ipacct.com> - 2.50-4
+- Rebuilt for yascreen soname bump
+
+* Wed Jul 20 2022 Fedora Release Engineering <releng@fedoraproject.org> - 2.50-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_37_Mass_Rebuild
+
+* Wed Jan 19 2022 Fedora Release Engineering <releng@fedoraproject.org> - 2.50-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_36_Mass_Rebuild
+
+* Tue Sep 21 2021 Boian Bonev <bbonev@ipacct.com> - 2.50-1
+- New version 2.50
+
+* Wed Jul 21 2021 Fedora Release Engineering <releng@fedoraproject.org> - 2.49-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_35_Mass_Rebuild
+
+* Tue Jan 26 2021 Fedora Release Engineering <releng@fedoraproject.org> - 2.49-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_34_Mass_Rebuild
+
 * Sun Dec 6 2020 Boian Bonev <bbonev@ipacct.com> - 2.49-1
 - Initial packaging for Fedora
