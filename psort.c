@@ -1,4 +1,4 @@
-// $Id: psort.c,v 1.15 2020/08/12 19:54:31 bbonev Exp $
+// $Id: psort.c,v 1.16 2023/01/02 22:37:27 bbonev Exp $
 
 // {{{ includes
 #define _GNU_SOURCE
@@ -108,7 +108,7 @@ static yascreen *s;
 static char **drchars=sp_chars_utf8; // frame draw characters
 
 static int heartbeat=0;
-static char ver[]="$Revision: 1.15 $";
+static char ver[]="$Revision: 1.16 $";
 static int winch=1; // signal for window size change event or other redraw request
 static int redraw=0; // signal to perform full redraw
 static int update=0; // signal for timeout that require data refresh
@@ -864,7 +864,7 @@ int main(int ac,char **av) { // {{{
 			if (FD_ISSET(STDIN_FILENO,&r)&&sizeof c==read(STDIN_FILENO,&c,sizeof c))
 				yascreen_feed(s,c); // pump state machine with bytestream
 
-			while ((ch=yascreen_getch_nowait(s))!=-1) { // a key can be yielded by the pump above or by timeout (single ESC)
+			while ((ch=yascreen_getch_nowait(s))!=YAS_K_NONE) { // a key can be yielded by the pump above or by timeout (single ESC)
 				if (ch=='q'||ch=='Q'||ch==0x03) { // also ^C
 					toexit=1;
 					break;
