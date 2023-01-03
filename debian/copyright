@@ -4,11 +4,11 @@ Upstream-Contact: Boian Bonev <bbonev@ipacct.com>
 Source: https://github.com/bbonev/bpfmon
 
 Files: *
-Copyright: 2015-2021 Boian Bonev <bbonev@ipacct.com>
+Copyright: 2015-2023 Boian Bonev <bbonev@ipacct.com>
 License: GPL-2.0+
 
 Files: debian/*
-Copyright: 2020-2021 Boian Bonev <bbonev@ipacct.com>
+Copyright: 2020-2023 Boian Bonev <bbonev@ipacct.com>
 License: GPL-2.0+
 
 License: GPL-2.0+
