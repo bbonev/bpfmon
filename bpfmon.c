@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.51 2023/01/02 22:35:44 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.52 2023/08/13 02:00:42 bbonev Exp $ {{{
 // Copyright © 2015-2021 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -121,7 +121,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.51 $";
+static char ver[]="$Revision: 2.52 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -226,6 +226,14 @@ static inline void display(void) { // {{{
 } // }}}
 
 static void sigwinch(int sign __attribute__((unused))) { // {{{
+	winch++;
+} // }}}
+
+static void sigcont(int sign __attribute__((unused))) { // {{{
+	yascreen_term_set(s,YAS_NOBUFF|YAS_NOSIGN|YAS_NOECHO);
+	yascreen_altbuf(s,1);
+	yascreen_cursor(s,0);
+	redraw=1;
 	winch++;
 } // }}}
 
@@ -806,6 +814,7 @@ int main(int ac,char **av) { // {{{
 		}
 
 		signal(SIGWINCH,sigwinch);
+		signal(SIGCONT,sigcont);
 
 		if (term&&!strcmp(term,"linux")) { // silly check for linux console
 			drlevels_h=levels_h_utf8=levels_h_utfp;
@@ -1079,6 +1088,13 @@ int main(int ac,char **av) { // {{{
 				if (ch=='r'||ch=='R'||ch==0x0c) { // also ^L
 					winch++;
 					redraw=1;
+				}
+				if (ch==0x1a) { // ^Z
+					yascreen_altbuf(s,0);
+					yascreen_cursor(s,1);
+					yascreen_term_restore(s);
+					kill(getpid(),SIGTSTP);
+					break;
 				}
 				if (ch=='n'||ch=='N') {
 					redraw=1;
