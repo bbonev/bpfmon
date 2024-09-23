@@ -246,7 +246,7 @@ static inline void swin(char *cap,int x,int y,int sx,int sy) { // {{{
 		if (sx>=1)
 			yascreen_putsxy(s,x-1,y-1,DA|inverse,drchars[D_M]);
 		if (sx>4&&cap[0]) {
-			wchar_t *ws=calloc(sizeof *ws,strlen(cap)+1),tws[2];
+			wchar_t *ws=calloc(strlen(cap)+1,sizeof *ws),tws[2];
 			int wl,nc=0,cl=0,prsp=1;
 			char ts[20];
 			int myx=x+1;
@@ -804,10 +804,10 @@ int main(int ac,char **av) { // {{{
 	if (!simplest) {
 		dta.bts.count=0;
 		dta.bts.size=SAMPLES;
-		dta.bts.data=calloc(sizeof(uint64_t),SAMPLES);
+		dta.bts.data=calloc(SAMPLES,sizeof(uint64_t));
 		dta.pks.count=0;
 		dta.pks.size=SAMPLES;
-		dta.pks.data=calloc(sizeof(uint64_t),SAMPLES);
+		dta.pks.data=calloc(SAMPLES,sizeof(uint64_t));
 		if (!dta.bts.data||!dta.pks.data) {
 			fprintf(stderr,"cannot allocate memory\n");
 			return 1;
