@@ -1,5 +1,5 @@
-// $Id: bpfmon.c,v 2.52 2023/08/13 02:00:42 bbonev Exp $ {{{
-// Copyright © 2015-2021 Boian Bonev (bbonev@ipacct.com)
+// $Id: bpfmon.c,v 2.53 2024/11/02 21:41:34 bbonev Exp $ {{{
+// Copyright © 2015-2024 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
 //
@@ -33,9 +33,9 @@
 #define LSIZE (8)
 #define TSIZEH (8+1+8)
 #define HELPX 41
-#define HELPY 13
+#define HELPY 14
 #define HSELX 41
-#define HSELY 7
+#define HSELY 8
 
 // default attributes
 //#define DA (YAS_FGXCOLOR(228)|YAS_BGXCOLOR(17))
@@ -45,6 +45,12 @@
 
 #define mymax(a,b) (((a)>(b))?(a):(b))
 #define mymin(a,b) (((a)<(b))?(a):(b))
+
+typedef enum {
+	PCAP,
+	IPT4,
+	IPT6,
+} e_source;
 
 typedef struct _s_grf {
 	int size;
@@ -121,13 +127,14 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.52 $";
+static char ver[]="$Revision: 2.53 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
 static int shhelp=0; // show help window with active keys
 static enum {CLASSIC,HORIZ} mode=CLASSIC; // drawing mode
-static enum {PCAP,IPT} source=PCAP; // counter source
+static e_source source=PCAP; // counter source
+static e_source iptselectt=PCAP; // select dialog IPTx
 
 static s_bpf dta={{0},{0},0,0,NULL,NULL}; // data with history
 
@@ -468,7 +475,7 @@ static inline void ipt_rule_get(void) { // {{{
 	if (rules)
 		ipt_rule_free();
 
-	if ((f=popen("iptables-save 2>/dev/null","r"))) {
+	if ((f=popen(iptselectt==IPT4?"iptables-save 2>/dev/null":"ip6tables-save 2>/dev/null","r"))) {
 		while (fgets(rl,sizeof rl,f)) {
 			if (strlen(rl)>0) // nuke end of line
 				rl[strlen(rl)-1]=0;
@@ -568,7 +575,7 @@ static inline void ipt_data_fetch(void) { // {{{
 	if (!(chain&&rulenum)) // do not collect any data in iptables rule select mode - initially rule may be unknown
 		return;
 
-	snprintf(s,sizeof s,"iptables -xvnt %s -L %s %d 2>/dev/null",table,chain,rulenum);
+	snprintf(s,sizeof s,"%s -xvnt %s -L %s %d 2>/dev/null",source==IPT4?"iptables":"ip6tables",table,chain,rulenum);
 	if ((f=popen(s,"r"))) {
 		if (2==fscanf(f,"%"SCNu64" %"SCNu64,&pc,&bc)) {
 			pcntr=pc;
@@ -618,6 +625,8 @@ int main(int ac,char **av) { // {{{
 			"Usage: %s [-autzvIiLlnNh] <device> '<bpf_filter_code>'\n"
 			"       %s [-autzvIiLlnNh] iptables '[<table>] <chain> <rulenum>'\n"
 			"       %s [-autzvIiLlnNh] iptables [select]\n"
+			"       %s [-autzvIiLlnNh] ip6tables '[<table>] <chain> <rulenum>'\n"
+			"       %s [-autzvIiLlnNh] ip6tables [select]\n"
 			"\t-a  -  use ASCII drawing chars\n"
 			"\t-u  -  use UTF-8 drawing chars (default)\n"
 			"\t-t  -  use no interface (simple text output)\n"
@@ -649,7 +658,7 @@ int main(int ac,char **av) { // {{{
 			"See tcpdump's manual for full description of BPF filter-code\n"
 			"Remember to put the filter code or iptables table/chain/rulenum in quotes.\n"
 			"\n"
-			,ver,av[0],av[0],av[0]);
+			,ver,av[0],av[0],av[0],av[0],av[0]);
 		return 0;
 	}
 
@@ -721,20 +730,21 @@ int main(int ac,char **av) { // {{{
 		fprintf(stderr,"device is not specified\n");
 		return 1;
 	}
-	if (!flt&&strcmp(dev,"iptables")) {
+	if (!flt&&strcmp(dev,"iptables")&&strcmp(dev,"ip6tables")) {
 		fprintf(stderr,"bpf filter code is not specified\n");
 		return 1;
 	}
 
-	if (!strcmp(dev,"iptables")) {
+	if (!strcmp(dev,"iptables")||!strcmp(dev,"ip6tables")) {
 		char *a1,*a2,*a3=NULL;
 		char *t=flt;
 
-		source=IPT;
+		source=strcmp(dev,"iptables")?IPT6:IPT4;
+		iptselectt=source;
 		if (!flt||!strcmp(flt,"select")) {
 			iptselect=1;
 			if (simplest) {
-				fprintf(stderr,"iptables rule selection is not available in simple text output mode\n");
+				fprintf(stderr,"%s rule selection is not available in simple text output mode\n",source==IPT4?"iptables":"ip6tables");
 				return 1;
 			}
 			ipt_rule_get();
@@ -745,7 +755,7 @@ int main(int ac,char **av) { // {{{
 			while (*t&&*t!=' ')
 				t++;
 			if (!*t) {
-				fprintf(stderr,"iptables filter code format is \"chain rulenum\"; \"%s\" given\n",flt);
+				fprintf(stderr,"%s filter code format is \"chain rulenum\"; \"%s\" given\n",source==IPT4?"iptables":"ip6tables",flt);
 				return 1;
 			}
 			*t=0;
@@ -758,7 +768,7 @@ int main(int ac,char **av) { // {{{
 			if (!*t) { // only 2 args given - a1 is chain a2 is rulenum
 				rulenum=atoi(a2);
 				if (rulenum<=0) {
-					fprintf(stderr,"iptables filter code rulenum must be >=0; %d given\n",rulenum);
+					fprintf(stderr,"%s filter code rulenum must be >=0; %d given\n",source==IPT4?"iptables":"ip6tables",rulenum);
 					return 1;
 				}
 				chain=a1;
@@ -771,7 +781,7 @@ int main(int ac,char **av) { // {{{
 
 				rulenum=atoi(a3);
 				if (rulenum<=0) {
-					fprintf(stderr,"iptables filter code rulenum must be >=0; %d given\n",rulenum);
+					fprintf(stderr,"%s filter code rulenum must be >=0; %d given\n",source==IPT4?"iptables":"ip6tables",rulenum);
 					return 1;
 				}
 				chain=a2;
@@ -851,20 +861,20 @@ int main(int ac,char **av) { // {{{
 	snprintf(ts,sizeof ts,"bpfmon %s",ver);
 	tslen=strlen(ts);
 
-	if (source==IPT)
+	if (source==IPT4||source==IPT6)
 		ipt_data_fetch();
 
 	for (;;) {
 		int64_t now=mytime();
 
 		if (!lastt||lastt+1000<now) { // display results every second
-			if (source==IPT)
+			if (source==IPT4||source==IPT6)
 				ipt_data_fetch();
 			if (!lastt)
 				lastt=now;
 			else
 				lastt+=1000;
-			if (source!=IPT||(chain&&rulenum))
+			if ((source!=IPT4&&source!=IPT6)||(chain&&rulenum))
 				display();
 			update=1; // force redraw
 		}
@@ -956,7 +966,10 @@ int main(int ac,char **av) { // {{{
 					int sy=mymin((unsigned)wssy-2,(unsigned)sely);
 					int cntshow=sely-2;
 
-					swin("select iptables rule",hx,hy,sx,sy);
+					if (iptselectt==IPT4)
+						swin("select iptables rule",hx,hy,sx,sy);
+					else
+						swin("select ip6tables rule",hx,hy,sx,sy);
 					if (iptselcnt&&cntshow>0) { // enough items and space to show
 						s_ipt *pr=rules;
 						int mybeg;
@@ -1012,12 +1025,16 @@ int main(int ac,char **av) { // {{{
 						int sx=mymin(wssx-2,HSELX);
 						int sy=mymin(wssy-2,HSELY);
 
-						swin("help (iptables rule select)",hx,hy,sx,sy);
+						if (iptselectt==IPT4)
+							swin("help (iptables rule select)",hx,hy,sx,sy);
+						else
+							swin("help (ip6tables rule select)",hx,hy,sx,sy);
 						yascreen_printxy(s,hx,hy+0,DA|inverse,"%.*s",sx-2,sy<=2?"":"UP,DN  - scroll up and down");
 						yascreen_printxy(s,hx,hy+1,DA|inverse,"%.*s",sx-2,sy<=3?"":"ENTER  - select rule");
-						yascreen_printxy(s,hx,hy+2,DA|inverse,"%.*s",sx-2,sy<=4?"":"ESC, s - cancel selection");
-						yascreen_printxy(s,hx,hy+3,DA|inverse,"%.*s",sx-2,sy<=5?"":"r, ^L  - refresh screen");
-						yascreen_printxy(s,hx,hy+4,DA|inverse,"%.*s",sx-2,sy<=6?"":"q, ^C  - quit");
+						yascreen_printxy(s,hx,hy+2,DA|inverse,"%.*s",sx-2,sy<=4?"":"ESC    - cancel selection");
+						yascreen_printxy(s,hx,hy+3,DA|inverse,"%.*s",sx-2,sy<=5?"":"s, 6   - change or cancel selection");
+						yascreen_printxy(s,hx,hy+4,DA|inverse,"%.*s",sx-2,sy<=6?"":"r, ^L  - refresh screen");
+						yascreen_printxy(s,hx,hy+5,DA|inverse,"%.*s",sx-2,sy<=7?"":"q, ^C  - quit");
 					} else {
 						int hx=mymax(2,(wssx-HELPX)/2+1);
 						int hy=mymax(2,(wssy-HELPY)/2+1);
@@ -1034,8 +1051,9 @@ int main(int ac,char **av) { // {{{
 						yascreen_printxy(s,hx,hy+6,DA|inverse,"%.*s",sx-2,sy<=8?"":"n     - toggle inverse mode");
 						yascreen_printxy(s,hx,hy+7,DA|inverse,"%.*s",sx-2,sy<=9?"":"z     - zero history and restart");
 						yascreen_printxy(s,hx,hy+8,DA|inverse,"%.*s",sx-2,sy<=10?"":"s     - iptables rule select");
-						yascreen_printxy(s,hx,hy+9,DA|inverse,"%.*s",sx-2,sy<=11?"":"r, ^L - refresh screen");
-						yascreen_printxy(s,hx,hy+10,DA|inverse,"%.*s",sx-2,sy<=12?"":"q, ^C - quit");
+						yascreen_printxy(s,hx,hy+9,DA|inverse,"%.*s",sx-2,sy<=11?"":"6     - ip6tables rule select");
+						yascreen_printxy(s,hx,hy+10,DA|inverse,"%.*s",sx-2,sy<=12?"":"r, ^L - refresh screen");
+						yascreen_printxy(s,hx,hy+11,DA|inverse,"%.*s",sx-2,sy<=13?"":"q, ^C - quit");
 					}
 				}
 				if (yascreen_update(s)<0) {
@@ -1145,12 +1163,16 @@ int main(int ac,char **av) { // {{{
 					shhelp=!shhelp;
 					winch++;
 				}
-				if (ch=='s'||ch=='S') {
+				if (ch=='s'||ch=='S'||ch=='6') {
 					if (!iptselect) {
 						iptselect=1;
+						iptselectt=ch=='6'?IPT6:IPT4;
 						ipt_rule_get();
 					} else {
-						if (source!=IPT||(chain&&rulenum)) { // already has valid rule
+						e_source oiptselectt=iptselectt;
+
+						iptselectt=ch=='6'?IPT6:IPT4;
+						if (iptselectt==oiptselectt&&(source==PCAP||(chain&&rulenum))) { // already has valid rule & we are not changing 4/6
 							iptselect=0;
 							ipt_rule_free();
 						} else // reload rules and continue in iptables select mode
@@ -1169,7 +1191,7 @@ int main(int ac,char **av) { // {{{
 							winch++;
 							break;
 						case YAS_K_ESC:
-							if (source!=IPT||(chain&&rulenum)) { // already has valid rule
+							if (source==PCAP||(chain&&rulenum)) { // already has valid rule
 								iptselect=0;
 								ipt_rule_free();
 							} else // reload rules and continue in iptables select mode
@@ -1213,7 +1235,7 @@ int main(int ac,char **av) { // {{{
 								pos++;
 							}
 
-							source=IPT;
+							source=iptselectt;
 							iptselect=0;
 							ipt_rule_free();
 							winch++;
