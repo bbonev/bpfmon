@@ -1,4 +1,4 @@
-# Copyright © 2015-2020 Boian Bonev (bbonev@ipacct.com) {{{
+# Copyright © 2015-2024 Boian Bonev (bbonev@ipacct.com) {{{
 #
 # SPDX-License-Identifer: GPL-2.0-or-later
 #
