@@ -1,4 +1,4 @@
-// $Id: psort.c,v 1.16 2023/01/02 22:37:27 bbonev Exp $
+// $Id: psort.c,v 1.17 2024/11/02 21:30:37 bbonev Exp $
 
 // {{{ includes
 #define _GNU_SOURCE
@@ -108,7 +108,7 @@ static yascreen *s;
 static char **drchars=sp_chars_utf8; // frame draw characters
 
 static int heartbeat=0;
-static char ver[]="$Revision: 1.16 $";
+static char ver[]="$Revision: 1.17 $";
 static int winch=1; // signal for window size change event or other redraw request
 static int redraw=0; // signal to perform full redraw
 static int update=0; // signal for timeout that require data refresh
