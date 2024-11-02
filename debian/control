@@ -7,7 +7,7 @@ Build-Depends:
  libpcap-dev,
  libyascreen-dev,
  pkg-config,
-Standards-Version: 4.6.2
+Standards-Version: 4.7.0
 Homepage: https://github.com/bbonev/bpfmon
 Vcs-Browser: https://github.com/bbonev/bpfmon
 Vcs-Git: https://github.com/bbonev/bpfmon.git
