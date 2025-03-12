@@ -1,4 +1,4 @@
-// $Id: psort.c,v 1.17 2024/11/02 21:30:37 bbonev Exp $
+// $Id: psort.c,v 1.18 2025/03/12 21:13:14 bbonev Exp $
 
 // {{{ includes
 #define _GNU_SOURCE
@@ -108,7 +108,7 @@ static yascreen *s;
 static char **drchars=sp_chars_utf8; // frame draw characters
 
 static int heartbeat=0;
-static char ver[]="$Revision: 1.17 $";
+static char ver[]="$Revision: 1.18 $";
 static int winch=1; // signal for window size change event or other redraw request
 static int redraw=0; // signal to perform full redraw
 static int update=0; // signal for timeout that require data refresh
@@ -119,7 +119,7 @@ static enum {M_TEXT,M_SCR} mode=M_SCR;
 
 static char *dev=NULL; // device to dump
 static char *flt=NULL; // pcap filter code
-static int noutf8=0; // flag if the undelying os cannot support utf8
+static int noutf8=0; // flag if the underlying os cannot support utf8
 static int inverse=0; // XORed with YAS_INVERSE
 
 // libpcap stuff
