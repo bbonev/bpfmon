@@ -62,6 +62,8 @@ MYCFLAGS=$(DEBUG) $(CPPFLAGS) $(CFLAGS) $(YASCC) $(PCACC) $(CCOPT)
 MYLIBS:=$(LIBS) $(YASLD) $(PCALD)
 MYLDFLAGS:=$(LDFLAGS) -fPIE -pie
 
+PREFIX?=$(DESTDIR)/usr
+BINDIR?=$(PREFIX)/sbin
 STRIP?=strip
 INSTALL?=install
 
@@ -81,9 +83,9 @@ clean:
 	rm -f bpfmon bpfmon.o psort psort.o
 
 install: bpfmon
-	$(INSTALL) -D -m 0755 $< $(DESTDIR)$(PREFIX)/sbin/$<
-	$(INSTALL) -D -m 0644 bpfmon.8 $(DESTDIR)$(PREFIX)/share/man/man8/bpfmon.8
-	$(STRIP) $(DESTDIR)$(PREFIX)/sbin/$<
+	$(INSTALL) -D -m 0755 $< $(BINDIR)/$<
+	$(INSTALL) -D -m 0644 bpfmon.8 $(PREFIX)/share/man/man8/bpfmon.8
+	$(STRIP) $(BINDIR)/$<
 
 mkotar:
 	$(MAKE) clean
