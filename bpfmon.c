@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.53 2024/11/02 21:41:34 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.54 2025/03/24 22:19:03 bbonev Exp $ {{{
 // Copyright © 2015-2024 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -14,15 +14,17 @@
 
 #include <pcap.h>
 #include <time.h>
+#include <errno.h>
 #include <stdio.h>
 #include <wchar.h>
 #include <locale.h>
-#include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <langinfo.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 
 #include <yascreen.h>
 // }}}
@@ -50,6 +52,7 @@ typedef enum {
 	PCAP,
 	IPT4,
 	IPT6,
+	CUST,
 } e_source;
 
 typedef struct _s_grf {
@@ -75,6 +78,12 @@ typedef struct _s_ipt {
 	char *rtext;
 	int rulenum;
 } s_ipt;
+
+typedef struct _s_cst {
+	struct _s_cst *next;
+	char *id;
+	char *descr;
+} s_cst;
 
 static const char *sp_chars_utf8[]={
 	"─","…",
@@ -127,7 +136,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.53 $";
+static char ver[]="$Revision: 2.54 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -150,7 +159,7 @@ static char *table="filter"; // iptables default table
 static int canfreetablechain=0; // mark if table and chain are ok to be freed
 static int rulenum=0; // iptables rule number to monitor
 static int iptselect=0; // flag if iptables selection is active
-static int noutf8=0; // flag if the undelying os cannot support utf8
+static int noutf8=0; // flag if the underlying os cannot support utf8
 static int inverse=0; // XORed with YAS_INVERSE
 
 static s_ipt *rules=NULL; // list of iptables rules for selection
@@ -159,6 +168,17 @@ static unsigned chainlen; // max len of chain names
 static int iptselbeg; // start position of rule list
 static int iptselsel; // selected position of rule list
 static int iptselcnt; // count of rules
+
+static char *custombin=""; // custom binary to get counters
+static char *customparam=""; // custom binary current parameter
+static int canfreeparam=0; // mark if customparam is ok to be freed
+static int cstselect=0; // flag if custom binary selection is active
+static s_cst *binpa=NULL; // list of custom binary parameters
+static unsigned idlen; // max len of parameter id
+static unsigned dslen; // max len of parameter description
+static int cstselbeg; // start position of rule list
+static int cstselsel; // selected position of rule list
+static int cstselcnt; // count of possible parameters
 
 // libpcap stuff
 static struct pcap *pc; // libpcap structure
@@ -242,6 +262,15 @@ static void sigcont(int sign __attribute__((unused))) { // {{{
 	yascreen_cursor(s,0);
 	redraw=1;
 	winch++;
+} // }}}
+
+static inline void sigchld(int sign __attribute__((unused))) { // {{{
+	int status,sverr;
+
+	sverr=errno;
+	while ((waitpid(-1,&status,WNOHANG))>0) {
+	}
+	errno=sverr;
 } // }}}
 
 static inline void swin(char *cap,int x,int y,int sx,int sy) { // {{{
@@ -476,6 +505,8 @@ static inline void ipt_rule_get(void) { // {{{
 		ipt_rule_free();
 
 	if ((f=popen(iptselectt==IPT4?"iptables-save 2>/dev/null":"ip6tables-save 2>/dev/null","r"))) {
+		chainlen=0;
+		tablelen=0;
 		while (fgets(rl,sizeof rl,f)) {
 			if (strlen(rl)>0) // nuke end of line
 				rl[strlen(rl)-1]=0;
@@ -567,15 +598,149 @@ static inline void ipt_rule_get(void) { // {{{
 	iptselsel=0;
 } // }}}
 
-static inline void ipt_data_fetch(void) { // {{{
-	char s[(!(chain&&rulenum))?1:100+strlen(table)+strlen(chain)];
-	uint64_t pc,bc;
+static inline void cst_param_free(void) { // {{{
+	s_cst *p;
+
+	while (binpa) {
+		p=binpa->next;
+		if (binpa->id)
+			free(binpa->id);
+		if (binpa->descr)
+			free(binpa->descr);
+		free(binpa);
+		binpa=p;
+	}
+} // }}}
+
+static inline void cst_param_get(void) { // {{{
+	char buf[strlen(custombin)+strlen(" bpfmon-list 2>/dev/null")+1];
+	s_cst *pr,*t=NULL;
+	char rl[4096];
+	int first=1;
 	FILE *f;
 
-	if (!(chain&&rulenum)) // do not collect any data in iptables rule select mode - initially rule may be unknown
+	if (binpa)
+		cst_param_free();
+
+	snprintf(buf,sizeof buf,"%s bpfmon-list 2>/dev/null",custombin);
+	//printf("running %s\n",buf);
+	if ((f=popen(buf,"r"))) {
+		idlen=0;
+		dslen=0;
+		while (fgets(rl,sizeof rl,f)) {
+			char *id,*descr;
+			s_cst *n;
+
+			if (strlen(rl)>0) // nuke end of line
+				rl[strlen(rl)-1]=0;
+			// trim the line
+			for (id=rl;*id==' '||*id=='\t';id++) {
+			}
+			if (id!=rl)
+				memmove(rl,id,sizeof rl-(id-rl));
+			while (strlen(rl)&&(rl[strlen(rl)-1]==' '||rl[strlen(rl)-1]=='\t'))
+				rl[strlen(rl)-1]=0;
+
+			if (first) {
+				if (strcmp(rl,"#bpfmon-counters")) { // invalid format, ignore
+					//printf("script does not support parameters\n");
+					break;
+				}
+				first=0;
+			}
+
+			if (rl[0]=='#') // ignore comments
+				continue;
+
+			id=rl;
+			while (*id!=' '||*id=='\t')
+				id++;
+			if (!*id) // no description
+				continue;
+			*id=0;
+			descr=id+1;
+			while (*descr==' '||*descr=='\t')
+				descr++;
+			if (!*descr) // no description
+				continue;
+			id=rl;
+
+			//printf("got id: %s descr: %s\n",id,descr);
+
+			n=calloc(1,sizeof *n);
+			if (!n) {
+				fprintf(stderr,"cannot allocate memory for parameter\n");
+				exit(1);
+			}
+			n->id=strdup(id);
+			n->descr=strdup(descr);
+			if (!n->id||!n->descr) {
+				if (n->id)
+					free(n->id);
+				if (n->descr)
+					free(n->descr);
+				free(n);
+				fprintf(stderr,"cannot allocate memory for parameter\n");
+				exit(1);
+			}
+			n->next=binpa;
+			binpa=n;
+			idlen=mymax(idlen,strlen(n->id));
+			dslen=mymax(dslen,strlen(n->descr));
+		}
+		pclose(f);
+	}
+
+	// reverse the list
+	cstselcnt=0;
+	pr=binpa;
+	while (pr) {
+		s_cst *tt=pr;
+
+		pr=pr->next;
+		tt->next=t;
+		t=tt;
+		cstselcnt++;
+	}
+	binpa=t;
+	//printf("binpa: %p\n",binpa);
+	cstselbeg=0;
+	cstselsel=0;
+} // }}}
+
+static inline void ipt_data_fetch(void) { // {{{
+	char s[mymax((!(chain&&rulenum))?1:100+strlen(table)+strlen(chain),strlen(custombin)+1+strlen(customparam)+100)];
+	uint64_t pc,bc;
+	char *cmd;
+	FILE *f;
+
+	if (source!=CUST&&!(chain&&rulenum)) // do not collect any data in iptables rule select mode - initially rule may be unknown
 		return;
 
-	snprintf(s,sizeof s,"%s -xvnt %s -L %s %d 2>/dev/null",source==IPT4?"iptables":"ip6tables",table,chain,rulenum);
+	switch (source) {
+		default:
+			cmd="true"; // we should not reach here
+			break;
+		case IPT4:
+			cmd="iptables";
+			break;
+		case IPT6:
+			cmd="ip6tables";
+			break;
+		case CUST:
+			cmd=custombin;
+			break;
+	}
+	switch (source) {
+		case IPT4:
+		case IPT6:
+			snprintf(s,sizeof s,"%s -xvnt %s -L %s %d 2>/dev/null",cmd,table,chain,rulenum);
+			break;
+		default:
+		case CUST:
+			snprintf(s,sizeof s,"%s%s%s 2>/dev/null",cmd,strlen(customparam)?" ":"",customparam);
+			break;
+	}
 	if ((f=popen(s,"r"))) {
 		if (2==fscanf(f,"%"SCNu64" %"SCNu64,&pc,&bc)) {
 			pcntr=pc;
@@ -584,6 +749,7 @@ static inline void ipt_data_fetch(void) { // {{{
 				pcnto=pcntr;
 				bcnto=bcntr;
 			}
+		} else {
 		}
 		pclose(f);
 	}
@@ -627,6 +793,7 @@ int main(int ac,char **av) { // {{{
 			"       %s [-autzvIiLlnNh] iptables [select]\n"
 			"       %s [-autzvIiLlnNh] ip6tables '[<table>] <chain> <rulenum>'\n"
 			"       %s [-autzvIiLlnNh] ip6tables [select]\n"
+			"       %s [-autzvIiLlnNh] custom <path-to-binary>\n"
 			"\t-a  -  use ASCII drawing chars\n"
 			"\t-u  -  use UTF-8 drawing chars (default)\n"
 			"\t-t  -  use no interface (simple text output)\n"
@@ -655,10 +822,11 @@ int main(int ac,char **av) { // {{{
 			"\tbpfmon iptables 'FORWARD 1'  - count packets matched by first rule in table filter, chain FORWARD\n"
 			"\tbpfmon iptables 'nat chn 3'  - count packets matched by third rule in table nat, chain chn\n"
 			"\tbpfmon iptables              - count packets matched by a selected iptables rule\n"
+			"\tbpfmon custom /home/me/c.sh  - custom data from script (space separated packets bytes)\n"
 			"See tcpdump's manual for full description of BPF filter-code\n"
 			"Remember to put the filter code or iptables table/chain/rulenum in quotes.\n"
 			"\n"
-			,ver,av[0],av[0],av[0],av[0],av[0]);
+			,ver,av[0],av[0],av[0],av[0],av[0],av[0]);
 		return 0;
 	}
 
@@ -726,11 +894,12 @@ int main(int ac,char **av) { // {{{
 				}
 		}
 	}
+
 	if (!dev) {
 		fprintf(stderr,"device is not specified\n");
 		return 1;
 	}
-	if (!flt&&strcmp(dev,"iptables")&&strcmp(dev,"ip6tables")) {
+	if (!flt&&strcmp(dev,"iptables")&&strcmp(dev,"ip6tables")&&strcmp(dev,"custom")) {
 		fprintf(stderr,"bpf filter code is not specified\n");
 		return 1;
 	}
@@ -790,6 +959,15 @@ int main(int ac,char **av) { // {{{
 		}
 	}
 
+	if (!strcmp(dev,"custom")) {
+		if (!flt) {
+			fprintf(stderr,"binary path is not specified\n");
+			return 1;
+		}
+		source=CUST;
+		custombin=flt;
+	}
+
 	if (source==PCAP) {
 		if ((pc=pcap_open_live(dev,8024,1,100,ebuf))==NULL) {
 			fprintf(stderr,"open_live error: (%s) %s\n",dev,ebuf);
@@ -810,6 +988,8 @@ int main(int ac,char **av) { // {{{
 		}
 		pcap_freecode(&fp);
 	}
+
+	signal(SIGCHLD,sigchld);
 
 	if (!simplest) {
 		dta.bts.count=0;
@@ -861,14 +1041,27 @@ int main(int ac,char **av) { // {{{
 	snprintf(ts,sizeof ts,"bpfmon %s",ver);
 	tslen=strlen(ts);
 
-	if (source==IPT4||source==IPT6)
+	if (source==IPT4||source==IPT6||source==CUST) {
+		if (source==CUST) {
+			cst_param_get();
+			if (cstselcnt>1)
+				cstselect=1;
+			if (cstselcnt==1) {
+				if (canfreeparam)
+					if (customparam)
+						free(customparam);
+				canfreeparam=1;
+				customparam=strdup(binpa->id);
+			}
+		}
 		ipt_data_fetch();
+	}
 
 	for (;;) {
 		int64_t now=mytime();
 
 		if (!lastt||lastt+1000<now) { // display results every second
-			if (source==IPT4||source==IPT6)
+			if (source==IPT4||source==IPT6||source==CUST)
 				ipt_data_fetch();
 			if (!lastt)
 				lastt=now;
@@ -957,7 +1150,7 @@ int main(int ac,char **av) { // {{{
 						if (wssy>2&&wssx>=TSIZEH+2)
 							drawh(&dta,1,2,wssx,wssy-2);
 				}
-				if (iptselect&&wssx>=8&&wssy>=6) { // iptable rule selection dialog
+				if ((iptselect||cstselect)&&wssx>=8&&wssy>=6) { // iptable rule selection dialog
 					int selx=wssx-6;
 					int sely=wssy-6;
 					int hx=mymax(2,(wssx-selx)/2+1);
@@ -966,11 +1159,15 @@ int main(int ac,char **av) { // {{{
 					int sy=mymin((unsigned)wssy-2,(unsigned)sely);
 					int cntshow=sely-2;
 
-					if (iptselectt==IPT4)
-						swin("select iptables rule",hx,hy,sx,sy);
-					else
-						swin("select ip6tables rule",hx,hy,sx,sy);
-					if (iptselcnt&&cntshow>0) { // enough items and space to show
+					if (cstselect)
+						swin("select custom script parameter",hx,hy,sx,sy);
+					else {
+						if (iptselectt==IPT4)
+							swin("select iptables rule",hx,hy,sx,sy);
+						else
+							swin("select ip6tables rule",hx,hy,sx,sy);
+					}
+					if (iptselect&&iptselcnt&&cntshow>0) { // enough items and space to show
 						s_ipt *pr=rules;
 						int mybeg;
 						int pos=0;
@@ -1015,11 +1212,53 @@ int main(int ac,char **av) { // {{{
 							pos++;
 						}
 					}
-					if (!rules)
+					if (iptselect&&!rules)
 						yascreen_printxy(s,hx,hy+0,DA|inverse,"%.*s",sx-2,sy<=2?"":"No rule to display, use q to quit");
+					if (cstselect&&cstselcnt&&cntshow>0) { // enough items and space to show
+						s_cst *pr=binpa;
+						int mybeg;
+						int pos=0;
+
+						// ensure selected pos is in bounds
+						if (cstselsel>=cstselcnt)
+							cstselsel=cstselcnt-1;
+						if (cstselsel<0)
+							cstselsel=0;
+						// adjust begin position
+						if (cstselbeg>cstselsel)
+							cstselbeg=cstselsel;
+						if (cstselsel-cstselbeg>=cntshow)
+							cstselbeg=cstselsel-cntshow+1;
+						mybeg=cstselbeg;
+						if (cstselcnt-mybeg<cntshow)
+							mybeg=cstselcnt-cntshow;
+						if (mybeg<0)
+							mybeg=0;
+
+						while (pr) {
+							if (pos>=mybeg) { // show item
+								int post=hx;
+								int posc=hx+idlen+1;
+								int leni=mymin((int)idlen,sx-2);
+								int lend=sx-2-leni-1;
+
+								if (pos-mybeg>=cntshow) // end of space
+									break;
+								if (sx>2) {
+									yascreen_printxy(s,post,hy+pos-mybeg,DA|(inverse^(pos==cstselsel?YAS_INVERSE:0)),"%-*.*s",leni,leni,pr->id);
+									if ((unsigned)sx>2+idlen+1)
+										yascreen_printxy(s,posc,hy+pos-mybeg,DA|(inverse^(pos==cstselsel?YAS_INVERSE:0)),"%-*.*s",lend,lend,pr->descr);
+								}
+							}
+							pr=pr->next;
+							pos++;
+						}
+					}
+					if (cstselect&&!binpa)
+						yascreen_printxy(s,hx,hy+0,DA|inverse,"%.*s",sx-2,sy<=2?"":"No script parameters to display, use q to quit");
 				}
 				if (shhelp&&wssx>=4&&wssy>=4) { // help screens
-					if (iptselect) {
+					if (iptselect||cstselect) {
 						int hx=mymax(2,(wssx-HSELX)/2+1);
 						int hy=mymax(2,(wssy-HSELY)/2+1);
 						int sx=mymin(wssx-2,HSELX);
@@ -1030,7 +1269,7 @@ int main(int ac,char **av) { // {{{
 						else
 							swin("help (ip6tables rule select)",hx,hy,sx,sy);
 						yascreen_printxy(s,hx,hy+0,DA|inverse,"%.*s",sx-2,sy<=2?"":"UP,DN  - scroll up and down");
-						yascreen_printxy(s,hx,hy+1,DA|inverse,"%.*s",sx-2,sy<=3?"":"ENTER  - select rule");
+						yascreen_printxy(s,hx,hy+1,DA|inverse,"%.*s",sx-2,sy<=3?"":(iptselect?"ENTER  - select rule":"ENTER  - select parameter"));
 						yascreen_printxy(s,hx,hy+2,DA|inverse,"%.*s",sx-2,sy<=4?"":"ESC    - cancel selection");
 						yascreen_printxy(s,hx,hy+3,DA|inverse,"%.*s",sx-2,sy<=5?"":"s, 6   - change or cancel selection");
 						yascreen_printxy(s,hx,hy+4,DA|inverse,"%.*s",sx-2,sy<=6?"":"r, ^L  - refresh screen");
@@ -1052,8 +1291,9 @@ int main(int ac,char **av) { // {{{
 						yascreen_printxy(s,hx,hy+7,DA|inverse,"%.*s",sx-2,sy<=9?"":"z     - zero history and restart");
 						yascreen_printxy(s,hx,hy+8,DA|inverse,"%.*s",sx-2,sy<=10?"":"s     - iptables rule select");
 						yascreen_printxy(s,hx,hy+9,DA|inverse,"%.*s",sx-2,sy<=11?"":"6     - ip6tables rule select");
-						yascreen_printxy(s,hx,hy+10,DA|inverse,"%.*s",sx-2,sy<=12?"":"r, ^L - refresh screen");
-						yascreen_printxy(s,hx,hy+11,DA|inverse,"%.*s",sx-2,sy<=13?"":"q, ^C - quit");
+						yascreen_printxy(s,hx,hy+10,DA|inverse,"%.*s",sx-2,sy<=12?"":"c     - custom script parameter select");
+						yascreen_printxy(s,hx,hy+11,DA|inverse,"%.*s",sx-2,sy<=13?"":"r, ^L - refresh screen");
+						yascreen_printxy(s,hx,hy+12,DA|inverse,"%.*s",sx-2,sy<=14?"":"q, ^C - quit");
 					}
 				}
 				if (yascreen_update(s)<0) {
@@ -1163,8 +1403,26 @@ int main(int ac,char **av) { // {{{
 					shhelp=!shhelp;
 					winch++;
 				}
+				if (ch=='c'&&strlen(custombin)) { // key valid in other modes only if custombin is there
+					if (!cstselect) {
+						if (iptselect) {
+							iptselect=0;
+							ipt_rule_free();
+						}
+						cstselect=1;
+						cst_param_get();
+					} else {
+						cstselect=0;
+						cst_param_free();
+					}
+					winch++;
+				}
 				if (ch=='s'||ch=='S'||ch=='6') {
 					if (!iptselect) {
+						if (cstselect) {
+							cstselect=0;
+							cst_param_free();
+						}
 						iptselect=1;
 						iptselectt=ch=='6'?IPT6:IPT4;
 						ipt_rule_get();
@@ -1172,7 +1430,7 @@ int main(int ac,char **av) { // {{{
 						e_source oiptselectt=iptselectt;
 
 						iptselectt=ch=='6'?IPT6:IPT4;
-						if (iptselectt==oiptselectt&&(source==PCAP||(chain&&rulenum))) { // already has valid rule & we are not changing 4/6
+						if (iptselectt==oiptselectt&&(source==PCAP||(chain&&rulenum)||(source==CUST&&strlen(custombin)))) { // we are not changing 4/6
 							iptselect=0;
 							ipt_rule_free();
 						} else // reload rules and continue in iptables select mode
@@ -1191,7 +1449,7 @@ int main(int ac,char **av) { // {{{
 							winch++;
 							break;
 						case YAS_K_ESC:
-							if (source==PCAP||(chain&&rulenum)) { // already has valid rule
+							if ((source==CUST||source==PCAP)||(chain&&rulenum)) { // already has valid rule
 								iptselect=0;
 								ipt_rule_free();
 							} else // reload rules and continue in iptables select mode
@@ -1238,6 +1496,64 @@ int main(int ac,char **av) { // {{{
 							source=iptselectt;
 							iptselect=0;
 							ipt_rule_free();
+							winch++;
+							break;
+						}
+					}
+				}
+				if (cstselect) {
+					switch (ch) {
+						case YAS_K_UP:
+							cstselsel--;
+							winch++;
+							break;
+						case YAS_K_DOWN:
+							cstselsel++;
+							winch++;
+							break;
+						case YAS_K_ESC:
+							if ((source==CUST||source==PCAP)||(chain&&rulenum)) { // already has valid rule
+								cstselect=0;
+								cst_param_free();
+							} else // reload rules and continue in custom script parameter select mode
+								cst_param_get();
+							winch++;
+							break;
+						case YAS_K_RET: {
+							s_cst *pr=binpa;
+							int pos=0;
+
+							if (!binpa)
+								break;
+
+							if (cstselsel<0)
+								cstselsel=0;
+							if (cstselsel>=cstselcnt)
+								cstselsel=cstselcnt-1;
+							while (pr) {
+								if (pos==cstselsel) {
+									// reset state
+									dta.bts.count=0;
+									dta.pks.count=0;
+									bcntr=0;
+									pcntr=0;
+									bcnto=0;
+									pcnto=0;
+									redraw=1;
+
+									if (canfreeparam)
+										if (customparam)
+											free(customparam);
+									canfreeparam=1;
+									customparam=strdup(pr->id);
+								}
+								pr=pr->next;
+								pos++;
+							}
+
+							source=CUST;
+							cstselect=0;
+							cst_param_free();
 							winch++;
 							break;
 						}
