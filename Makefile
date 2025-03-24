@@ -103,3 +103,8 @@ mkotar:
 	cp -fa ../bpfmon_$(VER).orig.tar.xz ../bpfmon-$(VER).tar.xz
 	cp -fa ../bpfmon_$(VER).orig.tar.xz.asc ../bpfmon-$(VER).tar.xz.asc
 
+re:
+	@$(MAKE) --no-print-directory clean
+	@$(MAKE) --no-print-directory -j
+
+.PHONY: all clean install mkotar re
