@@ -1,4 +1,4 @@
-.TH BPFMON "8" "October 2024"
+.TH BPFMON "8" "March 13, 2025"
 .SH NAME
 bpfmon \- BPF based visual packet rate monitor
 .SH SYNOPSIS
@@ -28,22 +28,66 @@ bpfmon \- BPF based visual packet rate monitor
 [\fI-autzvIiLlnNh\fR]
 \fIip6tables\fR
 [\fIselect\fR]
+
+.B bpfmon
+[\fI-autzvIiLlnNh\fR]
+\fIcustom\fR
+[\fI<path-to-binary>\fR]
 .SH DESCRIPTION
 bpfmon (like tcpdump) uses BPF filter to select packets that match the filter.
 While with tcpdump it is easy to see what packets match the filter, bpfmon shows
-how much are the matches packets in terms of bytes per second and packets per
+how much are the matched packets in terms of bytes per second and packets per
 second.
 .PP
 bpfmon displays the information in pseudo-graphical text interface, developed
-for modern terminals, but it also supports pure ASCII display.
+for modern terminals, but it also supports non-interactive pure ASCII display.
 .PP
 In addition, bpfmon allows instead of monitoring packets matching a BPF filter
 to get its data from an iptables/ip6tables rule (on Linux systems).
 .PP
+bpfmon also supports fetching the data from a custom script. The script may be
+simple and provide only a single counter pair or a more complex one that allows
+selecting from multiple different counter pairs by using a selection dialog.
+
+Example simple script to show incoming packets on the \fBlo\fR interface
+(this is a Linux example):
+
+.RS
+.EX
+.eo
+#!/bin/sh
+grep lo: /proc/net/dev|awk '{print $3" "$2}'
+.ec
+.EE
+.RE
+
+bpfmon will detect if the script supports multiple counters by executing it
+with a first parameter set to `\fIbpfmon-list\fR`. If the script outputs a first
+line `\fI#bpfmon-counters\fR`, followed by one or more lines like this:
+
+.RS
+.EX
+.eo
+#bpfmon-counters
+<argument1> <descripton1>
+<argument2> <descripton2>
+ ...
+<argumentN> <descriptonN>
+.ec
+.EE
+.RE
+
+that will let bpfmon know that the script supports multiple counter pairs and
+allow the user to invoke a selection dialog. Initially the first item will be
+automatically selected and the script called with \fI<argument1>\fR.
+
+See the \fBc\fR shortcut for how to invoke the selection dialog.
+
+.PP
 In interactive mode, there are hot keys to display help or modify the mode of
 operation.
 .PP
-Without any arguments, bpfmon will display its version and options help.
+Without any arguments, bpfmon will display its version and command line help.
 .SH OPTIONS
 .TP
 \fB\-a\fR
@@ -72,6 +116,7 @@ Show legend in vertical full-screen
 .TP
 \fB\-l\fR
 Hide legend in vertical full-screen
+.TP
 \fB\-n\fR
 Show interface white on black
 .TP
@@ -113,6 +158,9 @@ iptables rule select
 \fB6\fR
 ip6tables rule select
 .TP
+\fBc\fR
+custom counter select
+.TP
 \fBr\fR, \fBR\fR, \fBCtrl-L\fR
 refresh screen
 .TP
@@ -125,7 +173,7 @@ Exit
 .BR pcap-filter (7)
 .BR iptables (8),
 .SH AUTHOR
-The bpfmon program was written by Boian Bonev from 2014 to 2024.
+The bpfmon program was written by Boian Bonev from 2014 to 2025.
 .PP
 This manual page was written by Boian Bonev for the
 Debian project and is placed in the public domain.
