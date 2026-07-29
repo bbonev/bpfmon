@@ -1,6 +1,6 @@
-version=4
+Version: 5
 
-opts="searchmode=plain, \
-	pgpsigurlmangle=s/releases\/download\/v([0-9.]+)\/bpfmon-([0-9.]+)\.tar\.xz/releases\/download\/v$1\/bpfmon-$1\.tar\.xz\.asc/" \
-	https://api.github.com/repos/bbonev/bpfmon/releases \
-	https://github.com/bbonev/bpfmon/releases/download/v\d[\.\d]*/bpfmon-@ANY_VERSION@.tar.xz
+Source: https://api.github.com/repos/bbonev/bpfmon/releases
+Matching-Pattern: https://github.com/bbonev/bpfmon/releases/download/v\d[\.\d]*/bpfmon-@ANY_VERSION@.tar.xz
+Pgpsigurlmangle: s/releases\/download\/v([0-9.]+)\/bpfmon-([0-9.]+)\.tar\.xz/releases\/download\/v$1\/bpfmon-$1\.tar\.xz\.asc/
+Searchmode: plain
