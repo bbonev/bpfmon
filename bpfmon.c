@@ -1,5 +1,5 @@
-// $Id: bpfmon.c,v 2.55 2026/07/29 08:14:33 bbonev Exp $ {{{
-// Copyright © 2015-2024 Boian Bonev (bbonev@ipacct.com)
+// $Id: bpfmon.c,v 2.56 2026/07/29 08:27:52 bbonev Exp $ {{{
+// Copyright © 2015-2026 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
 //
@@ -136,7 +136,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.55 $";
+static char ver[]="$Revision: 2.56 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
