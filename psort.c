@@ -1,4 +1,4 @@
-// $Id: psort.c,v 1.20 2026/07/29 09:09:53 bbonev Exp $
+// $Id: psort.c,v 1.21 2026/07/29 09:20:29 bbonev Exp $
 
 // {{{ includes
 #define _GNU_SOURCE
@@ -108,7 +108,7 @@ static yascreen *s;
 static char **drchars=sp_chars_utf8; // frame draw characters
 
 static int heartbeat=0;
-static char ver[]="$Revision: 1.20 $";
+static char ver[]="$Revision: 1.21 $";
 static int winch=1; // signal for window size change event or other redraw request
 static int redraw=0; // signal to perform full redraw
 static int update=0; // signal for timeout that require data refresh
@@ -268,9 +268,7 @@ static inline void hexdump(const uint8_t *buf,int len) { // {{{
 	}
 } // }}}
 
-static inline char *ip2s(uint32_t ip) { // {{{
-	static char s[50];
-
+static inline char *ip2s(char *s,uint32_t ip) { // {{{ caller provides s (at least 16 bytes); returned for convenient inline use
 	sprintf(s,"%d.%d.%d.%d",(ip>>24)&0xff,(ip>>16)&0xff,(ip>>8)&0xff,ip&0xff);
 
 	return s;
@@ -368,6 +366,7 @@ static inline void freemap(void) { // {{{
 static inline void handpkt(uint16_t len,uint32_t si,uint16_t sp,uint32_t di,uint16_t dp) { // {{{
 	s_da *psd=allocip(si);
 	s_da *pdd=allocip(di);
+	char sb[16],db[16];
 
 	if (psd) {
 		if (!psd->ts)
@@ -382,8 +381,7 @@ static inline void handpkt(uint16_t len,uint32_t si,uint16_t sp,uint32_t di,uint
 		pdd->bo+=len;
 	}
 	mypr("%08x:%04x %08x:%04x ",si,sp,di,dp);
-	mypr("%s",ip2s(si));
-	mypr(":%d %s:%d\n",sp,ip2s(di),dp);
+	mypr("%s:%d %s:%d\n",ip2s(sb,si),sp,ip2s(db,di),dp);
 } // }}}
 
 static inline void sprintsi(char *s,size_t l,uint64_t v) { // {{{
@@ -409,6 +407,7 @@ static inline void sprintsi(char *s,size_t l,uint64_t v) { // {{{
 
 static inline void drawtxt(int c1,int c2,int c3,int c4,s_ip *i1,s_ip *i2,s_ip *i3,s_ip *i4) { // {{{
 	char xps[50];
+	char ipb[16];
 	int i;
 
 	printf("%15s %8s  ","from ip","pps");
@@ -418,25 +417,25 @@ static inline void drawtxt(int c1,int c2,int c3,int c4,s_ip *i1,s_ip *i2,s_ip *i
 	for (i=0;i<PRCNT;i++) {
 		sprintsi(xps,sizeof xps,i1[i].c);
 		if (i<c1)
-			printf("%2d: %15s %8s  ",i,ip2s(i1[i].ip),xps);
+			printf("%2d: %15s %8s  ",i,ip2s(ipb,i1[i].ip),xps);
 		else
 			printf("%2d: %15s %8s  ",i,"","");
 
 		sprintsi(xps,sizeof xps,i2[i].c);
 		if (i<c2)
-			printf("%15s %8s  ",ip2s(i2[i].ip),xps);
+			printf("%15s %8s  ",ip2s(ipb,i2[i].ip),xps);
 		else
 			printf("%15s %8s  ","","");
 
 		sprintsi(xps,sizeof xps,i3[i].c);
 		if (i<c3)
-			printf("%15s %8s  ",ip2s(i3[i].ip),xps);
+			printf("%15s %8s  ",ip2s(ipb,i3[i].ip),xps);
 		else
 			printf("%15s %8s  ","","");
 
 		sprintsi(xps,sizeof xps,i4[i].c);
 		if (i<c4)
-			printf("%15s %8s\n",ip2s(i4[i].ip),xps);
+			printf("%15s %8s\n",ip2s(ipb,i4[i].ip),xps);
 		else
 			printf("%15s %8s\n","","");
 
@@ -447,7 +446,8 @@ static inline void drawtxt(int c1,int c2,int c3,int c4,s_ip *i1,s_ip *i2,s_ip *i
 
 static inline void drawscr(int x,int y,int sx,int sy) { // {{{
 	char buf[200]; // enough to handle one line
-	char xps[50]; // ip2s uses static buffer...
+	char xps[50];
+	char ipb[16];
 	int rem=0;
 	int i,p;
 
@@ -463,25 +463,25 @@ static inline void drawscr(int x,int y,int sx,int sy) { // {{{
 			break;
 		sprintsi(xps,sizeof xps,bypkti[i].c);
 		if (i<cntpkti)
-			sprintf(buf,"%2d: %15s %8s  ",i,ip2s(bypkti[i].ip),xps);
+			sprintf(buf,"%2d: %15s %8s  ",i,ip2s(ipb,bypkti[i].ip),xps);
 		else
 			sprintf(buf,"%2d: %15s %8s  ",i,"","");
 
 		sprintsi(xps,sizeof xps,bypkto[i].c);
 		if (i<cntpkto)
-			sprintf(buf+strlen(buf),"%15s %8s  ",ip2s(bypkto[i].ip),xps);
+			sprintf(buf+strlen(buf),"%15s %8s  ",ip2s(ipb,bypkto[i].ip),xps);
 		else
 			sprintf(buf+strlen(buf),"%15s %8s  ","","");
 
 		sprintsi(xps,sizeof xps,bybtsi[i].c);
 		if (i<cntbtsi)
-			sprintf(buf+strlen(buf),"%15s %8s  ",ip2s(bybtsi[i].ip),xps);
+			sprintf(buf+strlen(buf),"%15s %8s  ",ip2s(ipb,bybtsi[i].ip),xps);
 		else
 			sprintf(buf+strlen(buf),"%15s %8s  ","","");
 
 		sprintsi(xps,sizeof xps,bybtso[i].c);
 		if (i<cntbtso)
-			sprintf(buf+strlen(buf),"%15s %8s\n",ip2s(bybtso[i].ip),xps);
+			sprintf(buf+strlen(buf),"%15s %8s\n",ip2s(ipb,bybtso[i].ip),xps);
 		else
 			sprintf(buf+strlen(buf),"%15s %8s\n","","");
 		if (i>=cntpkti&&i>=cntpkto&&i>=cntbtsi&&i>=cntbtso) // do not print empty numbers
@@ -619,8 +619,8 @@ nextproto:
 
 			si=ntohl(i->src);
 			di=ntohl(i->dst);
-			strcpy(sa,ip2s(si));
-			strcpy(da,ip2s(di));
+			ip2s(sa,si);
+			ip2s(da,di);
 
 			mypr("%s to %s, ",sa,da);
 
