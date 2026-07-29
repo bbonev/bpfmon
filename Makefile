@@ -13,6 +13,8 @@ all: bpfmon psort
 DEBUG:=-DDEBUG=1 -O0 -g3 -fno-inline -fstack-protector-all
 DEBUG:=-O3
 
+SCAN-BUILD?=scan-build-23
+
 PKG_CONFIG?=pkg-config
 YASCC?=$(shell $(PKG_CONFIG) --cflags yascreen)
 YASLD?=$(shell $(PKG_CONFIG) --libs yascreen)
@@ -109,4 +111,8 @@ re:
 	@$(MAKE) --no-print-directory clean
 	@$(MAKE) --no-print-directory -j
 
-.PHONY: all clean install mkotar re
+scan:
+	@$(MAKE) --no-print-directory clean
+	$(SCAN-BUILD) $(MAKE) --no-print-directory -j
+
+.PHONY: all clean install mkotar re scan
