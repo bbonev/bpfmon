@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.59 2026/07/29 09:41:14 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.60 2026/07/29 09:48:08 bbonev Exp $ {{{
 // Copyright © 2015-2026 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -35,9 +35,9 @@
 #define LSIZE (8)
 #define TSIZEH (8+1+8)
 #define HELPX 41
-#define HELPY 14
+#define HELPY 16
 #define HSELX 41
-#define HSELY 8
+#define HSELY 9
 
 // default attributes
 //#define DA (YAS_FGXCOLOR(228)|YAS_BGXCOLOR(17))
@@ -136,7 +136,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.59 $";
+static char ver[]="$Revision: 2.60 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -836,6 +836,7 @@ int main(int ac,char **av) { // {{{
 			"\tl       - toggle legend in vertical mode\n"
 			"\tr, ^L   - refresh screen\n"
 			"\tq, ^C   - quit\n"
+			"\t^Z      - suspend (fg to resume)\n"
 			"Examples:\n"
 			"\tbpfmon eth0 'arp or ip'      - count arp or ip packets on eth0\n"
 			"\tbpfmon any ''                - count all packets on all interfaces\n"
@@ -1295,6 +1296,7 @@ int main(int ac,char **av) { // {{{
 						yascreen_printxy(s,hx,hy+3,DA|inverse,"%.*s",sx-2,sy<=5?"":"s, 6   - change or cancel selection");
 						yascreen_printxy(s,hx,hy+4,DA|inverse,"%.*s",sx-2,sy<=6?"":"r, ^L  - refresh screen");
 						yascreen_printxy(s,hx,hy+5,DA|inverse,"%.*s",sx-2,sy<=7?"":"q, ^C  - quit");
+						yascreen_printxy(s,hx,hy+6,DA|inverse,"%.*s",sx-2,sy<=8?"":"^Z     - suspend (fg to resume)");
 					} else {
 						int hx=mymax(2,(wssx-HELPX)/2+1);
 						int hy=mymax(2,(wssy-HELPY)/2+1);
@@ -1315,6 +1317,7 @@ int main(int ac,char **av) { // {{{
 						yascreen_printxy(s,hx,hy+10,DA|inverse,"%.*s",sx-2,sy<=12?"":"c     - custom script parameter select");
 						yascreen_printxy(s,hx,hy+11,DA|inverse,"%.*s",sx-2,sy<=13?"":"r, ^L - refresh screen");
 						yascreen_printxy(s,hx,hy+12,DA|inverse,"%.*s",sx-2,sy<=14?"":"q, ^C - quit");
+						yascreen_printxy(s,hx,hy+13,DA|inverse,"%.*s",sx-2,sy<=15?"":"^Z    - suspend (fg to resume)");
 					}
 				}
 				if (yascreen_update(s)<0) {
