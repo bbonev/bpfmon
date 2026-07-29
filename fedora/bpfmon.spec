@@ -1,14 +1,13 @@
 Name:           bpfmon
-Version:        2.53
-Release:        7%{?dist}
-Summary:        Traffic monitor for BPF expression/iptables rule
+Version:        2.60
+Release:        1%{?dist}
+Summary:        Traffic monitor for BPF expression/iptables rule/custom script
 
 License:        GPL-2.0-or-later
 URL:            https://github.com/bbonev/bpfmon/
 Source0:        %{url}releases/download/v%{version}/bpfmon-%{version}.tar.xz
 Source1:        %{url}releases/download/v%{version}/bpfmon-%{version}.tar.xz.asc
 Source2:        https://raw.githubusercontent.com/bbonev/bpfmon/v%{version}/debian/upstream/signing-key.asc
-Patch1:         bpfmon-2.53-sbindir.patch
 
 BuildRequires:  gcc
 BuildRequires:  gnupg2
@@ -25,6 +24,9 @@ nice pseudo-graphical terminal interface.
 bpfmon also supports monitoring an iptables rule that
 is selected by command line option or selected from a
 menu.
+
+For even bigger flexibility bpfmon supports getting the
+counters from a custom script.
 
 %global _hardened_build 1
 
@@ -46,6 +48,9 @@ install -TD -m 0644 bpfmon.8 $RPM_BUILD_ROOT/%{_mandir}/man8/bpfmon.8
 %{_mandir}/man8/bpfmon.8*
 
 %changelog
+* Wed Jul 29 2026 Boian Bonev <bbonev@ipacct.com> - 2.60-1
+- New version 2.60
+
 * Wed Jul 15 2026 Fedora Release Engineering <releng@fedoraproject.org> - 2.53-7
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_45_Mass_Rebuild
 
