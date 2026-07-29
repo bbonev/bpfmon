@@ -1,4 +1,4 @@
-// $Id: psort.c,v 1.18 2025/03/12 21:13:14 bbonev Exp $
+// $Id: psort.c,v 1.19 2026/07/29 08:20:58 bbonev Exp $
 
 // {{{ includes
 #define _GNU_SOURCE
@@ -108,7 +108,7 @@ static yascreen *s;
 static char **drchars=sp_chars_utf8; // frame draw characters
 
 static int heartbeat=0;
-static char ver[]="$Revision: 1.18 $";
+static char ver[]="$Revision: 1.19 $";
 static int winch=1; // signal for window size change event or other redraw request
 static int redraw=0; // signal to perform full redraw
 static int update=0; // signal for timeout that require data refresh
@@ -228,6 +228,23 @@ static inline void swin(char *cap,int x,int y,int sx,int sy) { // {{{
 } // }}}
 
 static void sigwinch(int sign __attribute__((unused))) { // {{{
+	winch++;
+} // }}}
+
+static void sigtstp(int sign __attribute__((unused))) { // {{{ hand the terminal back before stopping; covers ^Z (raised by hand, ISIG is off) and an external kill -TSTP
+	yascreen_altbuf(s,0);
+	yascreen_cursor(s,1);
+	yascreen_term_restore(s);
+	signal(SIGTSTP,SIG_DFL);
+	raise(SIGTSTP); // blocked while in the handler: the stop happens on return, with the terminal already sane
+} // }}}
+
+static void sigcont(int sign __attribute__((unused))) { // {{{
+	signal(SIGTSTP,sigtstp); // re-arm after the SIG_DFL stop above
+	yascreen_term_set(s,YAS_NOBUFF|YAS_NOSIGN|YAS_NOECHO);
+	yascreen_altbuf(s,1);
+	yascreen_cursor(s,0);
+	redraw=1;
 	winch++;
 } // }}}
 
@@ -739,6 +756,8 @@ int main(int ac,char **av) { // {{{
 
 	if (mode==M_SCR) {
 		signal(SIGWINCH,sigwinch);
+		signal(SIGTSTP,sigtstp);
+		signal(SIGCONT,sigcont);
 		if (!setlocale(LC_CTYPE,"C.UTF-8")) { // cannot set utf8 locale, disable utf mode and force to ascii
 			drchars=sp_chars_asci;
 			noutf8=1;
@@ -872,6 +891,10 @@ int main(int ac,char **av) { // {{{
 				if (ch=='r'||ch=='R'||ch==0x0c) { // also ^L
 					winch++;
 					redraw=1;
+				}
+				if (ch==0x1a) { // ^Z
+					kill(getpid(),SIGTSTP); // sigtstp hands the terminal back, sigcont redraws on resume
+					break;
 				}
 				if (ch=='n'||ch=='N') {
 					redraw=1;
