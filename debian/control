@@ -3,6 +3,7 @@ Section: admin
 Maintainer: Boian Bonev <bbonev@ipacct.com>
 Build-Depends:
  debhelper-compat (= 14),
+ dh-sequence-single-binary,
  libpcap-dev,
  libyascreen-dev,
  pkgconf,
