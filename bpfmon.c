@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.56 2026/07/29 08:27:52 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.57 2026/07/29 09:28:40 bbonev Exp $ {{{
 // Copyright © 2015-2026 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -136,7 +136,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.56 $";
+static char ver[]="$Revision: 2.57 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -662,9 +662,9 @@ static inline void cst_param_get(void) { // {{{
 				continue;
 
 			id=rl;
-			while (*id!=' '||*id=='\t')
+			while (*id&&*id!=' '&&*id!='\t')
 				id++;
-			if (!*id) // no description
+			if (!*id) // no separator, so no description
 				continue;
 			*id=0;
 			descr=id+1;
