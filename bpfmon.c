@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.57 2026/07/29 09:28:40 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.58 2026/07/29 09:29:50 bbonev Exp $ {{{
 // Copyright © 2015-2026 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -136,7 +136,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.57 $";
+static char ver[]="$Revision: 2.58 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -221,8 +221,8 @@ static inline void sprintsi(char *s,size_t l,uint64_t v) { // {{{
 } // }}}
 
 static inline void display(void) { // {{{
-	uint64_t db=bcntr-bcnto;
-	uint64_t dp=pcntr-pcnto;
+	uint64_t db=bcntr<bcnto?0:bcntr-bcnto; // counter may reset (iptables rule re-added, script restarted); avoid unsigned wrap
+	uint64_t dp=pcntr<pcnto?0:pcntr-pcnto;
 	char bs[20],ps[20];
 
 	bcnto=bcntr;
