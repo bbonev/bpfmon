@@ -1,4 +1,4 @@
-// $Id: psort.c,v 1.19 2026/07/29 08:20:58 bbonev Exp $
+// $Id: psort.c,v 1.20 2026/07/29 09:09:53 bbonev Exp $
 
 // {{{ includes
 #define _GNU_SOURCE
@@ -108,7 +108,7 @@ static yascreen *s;
 static char **drchars=sp_chars_utf8; // frame draw characters
 
 static int heartbeat=0;
-static char ver[]="$Revision: 1.19 $";
+static char ver[]="$Revision: 1.20 $";
 static int winch=1; // signal for window size change event or other redraw request
 static int redraw=0; // signal to perform full redraw
 static int update=0; // signal for timeout that require data refresh
@@ -463,9 +463,9 @@ static inline void drawscr(int x,int y,int sx,int sy) { // {{{
 			break;
 		sprintsi(xps,sizeof xps,bypkti[i].c);
 		if (i<cntpkti)
-			sprintf(buf,"%*s%2d: %15s %8s  ",rem,"",i,ip2s(bypkti[i].ip),xps);
+			sprintf(buf,"%2d: %15s %8s  ",i,ip2s(bypkti[i].ip),xps);
 		else
-			sprintf(buf,"%*s%2d: %15s %8s  ",rem,"",i,"","");
+			sprintf(buf,"%2d: %15s %8s  ",i,"","");
 
 		sprintsi(xps,sizeof xps,bypkto[i].c);
 		if (i<cntpkto)
@@ -486,7 +486,7 @@ static inline void drawscr(int x,int y,int sx,int sy) { // {{{
 			sprintf(buf+strlen(buf),"%15s %8s\n","","");
 		if (i>=cntpkti&&i>=cntpkto&&i>=cntbtsi&&i>=cntbtso) // do not print empty numbers
 			strcpy(buf,"");
-		yascreen_printxy(s,x,p,DA|inverse,"%.*s",sx,buf);
+		yascreen_printxy(s,x+rem,p,DA|inverse,"%.*s",sx,buf); // rem centers the table, same as the header row above
 	}
 } // }}}
 
@@ -564,18 +564,18 @@ static inline void display(void) { // {{{
 
 static void pc_cb(unsigned char *user __attribute__((unused)),const struct pcap_pkthdr *h,const u_char *bytes) { // {{{
 	int dl=pcap_datalink(pc);
+	uint32_t blen=h->caplen; // captured bytes available from the current bytes pointer
 	int issll=0;
 
 	if (dl==DLT_LINUX_SLL) {
 		s_sll *s=(s_sll *)bytes;
 
+		if (blen<sizeof *s) // need the full SLL header before dereferencing it
+			return;
 		if (ntohs(s->arphrd)==1) {
-			s_ehdr *e;
-
 			bytes+=sizeof *s;
 			bytes-=6+6+2;
-			e=(s_ehdr *)bytes;
-			e->etype1=htons(0x800);
+			blen-=(sizeof *s)-(6+6+2); // pointer advanced by 2, so 2 fewer captured bytes remain
 			dl=DLT_EN10MB;
 			mypr("SLL, ");
 			issll=1;
@@ -589,21 +589,28 @@ nextproto:
 		s_ehdr *e=(s_ehdr *)bytes;
 		s_ip_hdr *i=NULL;
 		s_tu_hdr *t=NULL;
+		uint32_t ioff=0; // offset of the ip header within bytes
+		uint16_t etype;
 
-		switch (ntohs(e->etype1)) {
+		if (!issll&&blen<6+6+2) // need the ethernet type field
+			return;
+		etype=issll?0x800:ntohs(e->etype1); // sll was already reduced to plain ip above, do not touch the buffer
+		switch (etype) {
 			case 0x800: // ip, plain
 				mypr("eth-ip, ");
-				i=(s_ip_hdr *)(bytes+6+6+2);
+				ioff=6+6+2;
 				break;
 			case 0x8100: // ip, tagged
-				if (ntohs(e->etype3)==0x800) {
+				if (blen>=6+6+4+2&&ntohs(e->etype3)==0x800) {
 					mypr("eth-vlan-ip(%d), ",ntohs(e->etype2)&0xfff);
-					i=(s_ip_hdr *)(bytes+6+6+4+2);
+					ioff=6+6+4+2;
 				}
 				break;
 			default:
-				mypr("unknown eth-type: %04x\n",ntohs(e->etype1));
+				mypr("unknown eth-type: %04x\n",etype);
 		}
+		if (ioff&&blen>=ioff+sizeof(s_ip_hdr))
+			i=(s_ip_hdr *)(bytes+ioff);
 		if (i) {
 			uint16_t sp=0,dp=0;
 			char sa[50],da[50];
@@ -626,6 +633,10 @@ nextproto:
 						return;
 					}
 					ihl*=4;
+					if (blen<ioff+(uint32_t)ihl+sizeof(s_tu_hdr)) { // truncated before the l4 ports
+						mypr("truncated l4 header\n");
+						return;
+					}
 					t=(s_tu_hdr *)(((uint8_t *)i)+ihl);
 					mypr("%s %d to %d\n",i->proto==6?"TCP":"UDP",ntohs(t->sp),ntohs(t->dp));
 					sp=ntohs(t->sp);
@@ -634,7 +645,7 @@ nextproto:
 				default:
 					mypr("proto %02x\n",i->proto);
 					if (issll&&mode==M_TEXT)
-						hexdump(bytes,h->len);
+						hexdump(bytes,blen);
 			}
 			handpkt(h->len,si,sp,di,dp);
 		}
