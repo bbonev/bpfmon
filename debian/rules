@@ -4,7 +4,7 @@ export PREFIX=/usr
 export DEB_BUILD_MAINT_OPTIONS=hardening=+all
 
 %:
-	dh $@ --buildsystem=makefile --without=autoreconf --with=single-binary
+	dh $@ --buildsystem=makefile --without=autoreconf
 
 override_dh_auto_build:
 	dh_auto_build -- \
