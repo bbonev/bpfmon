@@ -32,7 +32,7 @@ bpfmon \- BPF based visual packet rate monitor
 .B bpfmon
 [\fI-autzvIiLlnNh\fR]
 \fIcustom\fR
-[\fI<path-to-binary>\fR]
+\fI<path-to-binary>\fR
 .SH DESCRIPTION
 bpfmon (like tcpdump) uses BPF filter to select packets that match the filter.
 While with tcpdump it is easy to see what packets match the filter, bpfmon shows
@@ -49,8 +49,20 @@ bpfmon also supports fetching the data from a custom script. The script may be
 simple and provide only a single counter pair or a more complex one that allows
 selecting from multiple different counter pairs by using a selection dialog.
 
+When called to produce data, the script must print to standard output two
+whitespace-separated non-negative integers on a single line: the packet counter
+first and the byte counter second. Only these first two values are read. bpfmon
+treats them as cumulative totals and displays the difference between successive
+readings, so the script must report monotonically increasing counters rather
+than instantaneous rates; the first value is shown as the packets-per-second
+figure and the second as the bytes-per-second figure. The first reading only
+establishes a baseline, and if a counter decreases between two readings (for
+example because the underlying counter was reset) that interval is shown as
+zero.
+
 Example simple script to show incoming packets on the \fBlo\fR interface
-(this is a Linux example):
+(this is a Linux example; it prints the packet count followed by the byte
+count):
 
 .RS
 .EX
@@ -61,25 +73,36 @@ grep lo: /proc/net/dev|awk '{print $3" "$2}'
 .EE
 .RE
 
-bpfmon will detect if the script supports multiple counters by executing it
-with a first parameter set to `\fIbpfmon-list\fR`. If the script outputs a first
-line `\fI#bpfmon-counters\fR`, followed by one or more lines like this:
+bpfmon detects whether the script supports multiple counters by first executing
+it with \fIbpfmon-list\fR as its only argument. Every script is invoked this way
+at startup, so a script that inspects its argument must recognise or ignore
+\fIbpfmon-list\fR (the simple example above ignores its arguments). If the first
+non-empty line of that output is exactly \fI#bpfmon-counters\fR, followed by one
+or more lines like this:
 
 .RS
 .EX
-.eo
 #bpfmon-counters
 <argument1> <descripton1>
 <argument2> <descripton2>
- ...
+\&...
 <argumentN> <descriptonN>
-.ec
 .EE
 .RE
 
 that will let bpfmon know that the script supports multiple counter pairs and
-allow the user to invoke a selection dialog. Initially the first item will be
-automatically selected and the script called with \fI<argument1>\fR.
+allow the user to invoke a selection dialog. On each line the argument and its
+description are separated by the first space or tab, and any surrounding
+whitespace is ignored. Lines whose first character is \fI#\fR are treated as
+comments (so the \fI#bpfmon-counters\fR marker itself and any annotations are
+skipped), and a line that carries no description is ignored. The
+\fI#bpfmon-counters\fR marker must be the first non-empty line of the output;
+otherwise the script is treated as a single-counter one.
+
+A single-counter script is invoked with no argument to fetch its data. For a
+multi-counter script the first item is automatically selected at startup and the
+script is called with \fI<argument1>\fR; selecting another entry invokes the
+script with that entry's argument.
 
 See the \fBc\fR shortcut for how to invoke the selection dialog.
 
@@ -125,7 +148,6 @@ Show interface inverse (black on white)
 .TP
 \fB\-h\fR
 Show usage information and exit
-.RE
 .SH KEYBOARD SHORTCUTS
 .TP
 \fBh\fR, \fBH\fR, \fB?\fR
@@ -166,7 +188,6 @@ refresh screen
 .TP
 \fBq\fR, \fBQ\fR, \fBCtrl-C\fR
 Exit
-.RE
 .SH SEE ALSO
 .BR tcpdump (8),
 .BR bpf (4),
