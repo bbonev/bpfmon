@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.58 2026/07/29 09:29:50 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.59 2026/07/29 09:41:14 bbonev Exp $ {{{
 // Copyright © 2015-2026 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -136,7 +136,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.58 $";
+static char ver[]="$Revision: 2.59 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -717,38 +717,50 @@ static inline void cst_param_get(void) { // {{{
 	cstselsel=0;
 } // }}}
 
+static inline char *shquote(char *dst,const char *src) { // {{{ single-quote src into dst (needs at least 4*strlen(src)+3 bytes) for safe interpolation into a /bin/sh command line
+	char *d=dst;
+
+	*d++='\'';
+	while (*src) {
+		if (*src=='\'') { // close quote, add an escaped quote, reopen: '\''
+			*d++='\'';
+			*d++='\\';
+			*d++='\'';
+			*d++='\'';
+		} else
+			*d++=*src;
+		src++;
+	}
+	*d++='\'';
+	*d=0;
+	return dst;
+} // }}}
+
 static inline void ipt_data_fetch(void) { // {{{
-	char s[mymax((!(chain&&rulenum))?1:100+strlen(table)+strlen(chain),strlen(custombin)+1+strlen(customparam)+100)];
+	char s[mymax((!(chain&&rulenum))?1:100+4*strlen(table)+4*strlen(chain),4*strlen(custombin)+1+4*strlen(customparam)+100)];
 	uint64_t pc,bc;
-	char *cmd;
 	FILE *f;
 
 	if (source!=CUST&&!(chain&&rulenum)) // do not collect any data in iptables rule select mode - initially rule may be unknown
 		return;
 
 	switch (source) {
-		default:
-			cmd="true"; // we should not reach here
-			break;
 		case IPT4:
-			cmd="iptables";
+		case IPT6: {
+			char qt[4*strlen(table)+3];
+			char qc[4*strlen(chain)+3]; // chain is non-NULL here, guaranteed by the early return above
+
+			snprintf(s,sizeof s,"%s -xvnt %s -L %s %d 2>/dev/null",source==IPT4?"iptables":"ip6tables",shquote(qt,table),shquote(qc,chain),rulenum);
 			break;
-		case IPT6:
-			cmd="ip6tables";
+		}
+		default: // not reached; PCAP returns early above
+		case CUST: {
+			char qb[4*strlen(custombin)+3];
+			char qp[4*strlen(customparam)+3];
+
+			snprintf(s,sizeof s,"%s%s%s 2>/dev/null",shquote(qb,custombin),strlen(customparam)?" ":"",strlen(customparam)?shquote(qp,customparam):"");
 			break;
-		case CUST:
-			cmd=custombin;
-			break;
-	}
-	switch (source) {
-		case IPT4:
-		case IPT6:
-			snprintf(s,sizeof s,"%s -xvnt %s -L %s %d 2>/dev/null",cmd,table,chain,rulenum);
-			break;
-		default:
-		case CUST:
-			snprintf(s,sizeof s,"%s%s%s 2>/dev/null",cmd,strlen(customparam)?" ":"",customparam);
-			break;
+		}
 	}
 	if ((f=popen(s,"r"))) {
 		if (2==fscanf(f,"%"SCNu64" %"SCNu64,&pc,&bc)) {
@@ -758,7 +770,6 @@ static inline void ipt_data_fetch(void) { // {{{
 				pcnto=pcntr;
 				bcnto=bcntr;
 			}
-		} else {
 		}
 		pclose(f);
 	}
