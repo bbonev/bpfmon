@@ -1,4 +1,4 @@
-// $Id: bpfmon.c,v 2.54 2025/03/24 22:19:03 bbonev Exp $ {{{
+// $Id: bpfmon.c,v 2.55 2026/07/29 08:14:33 bbonev Exp $ {{{
 // Copyright © 2015-2024 Boian Bonev (bbonev@ipacct.com)
 //
 // SPDX-License-Identifer: GPL-2.0-or-later
@@ -136,7 +136,7 @@ static const char **drlevels_h=levels_h_utff; // (H) graph draw characters
 static int heartbeat=0;
 static char *sbps=" bytes per second ";
 static char *spps=" packets per second ";
-static char ver[]="$Revision: 2.54 $";
+static char ver[]="$Revision: 2.55 $";
 static int simplest=0; // use simplest console mode
 static int legend=1; // show legend in classic mode
 static int history=0; // show history in classic mode
@@ -256,7 +256,16 @@ static void sigwinch(int sign __attribute__((unused))) { // {{{
 	winch++;
 } // }}}
 
+static void sigtstp(int sign __attribute__((unused))) { // {{{ hand the terminal back before stopping; covers ^Z (raised by hand, ISIG is off) and an external kill -TSTP
+	yascreen_altbuf(s,0);
+	yascreen_cursor(s,1);
+	yascreen_term_restore(s);
+	signal(SIGTSTP,SIG_DFL);
+	raise(SIGTSTP); // blocked while in the handler: the stop happens on return, with the terminal already sane
+} // }}}
+
 static void sigcont(int sign __attribute__((unused))) { // {{{
+	signal(SIGTSTP,sigtstp); // re-arm after the SIG_DFL stop above
 	yascreen_term_set(s,YAS_NOBUFF|YAS_NOSIGN|YAS_NOECHO);
 	yascreen_altbuf(s,1);
 	yascreen_cursor(s,0);
@@ -1004,6 +1013,7 @@ int main(int ac,char **av) { // {{{
 		}
 
 		signal(SIGWINCH,sigwinch);
+		signal(SIGTSTP,sigtstp);
 		signal(SIGCONT,sigcont);
 
 		if (term&&!strcmp(term,"linux")) { // silly check for linux console
@@ -1348,10 +1358,7 @@ int main(int ac,char **av) { // {{{
 					redraw=1;
 				}
 				if (ch==0x1a) { // ^Z
-					yascreen_altbuf(s,0);
-					yascreen_cursor(s,1);
-					yascreen_term_restore(s);
-					kill(getpid(),SIGTSTP);
+					kill(getpid(),SIGTSTP); // sigtstp hands the terminal back, sigcont redraws on resume
 					break;
 				}
 				if (ch=='n'||ch=='N') {
