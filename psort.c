@@ -1,4 +1,4 @@
-// $Id: psort.c,v 1.21 2026/07/29 09:20:29 bbonev Exp $
+// $Id: psort.c,v 1.22 2026/07/29 09:41:38 bbonev Exp $
 
 // {{{ includes
 #define _GNU_SOURCE
@@ -26,7 +26,7 @@
 #define PRCNT 30
 
 #define HELPX 41
-#define HELPY 9
+#define HELPY 10
 
 #define DA 0
 
@@ -108,7 +108,7 @@ static yascreen *s;
 static char **drchars=sp_chars_utf8; // frame draw characters
 
 static int heartbeat=0;
-static char ver[]="$Revision: 1.21 $";
+static char ver[]="$Revision: 1.22 $";
 static int winch=1; // signal for window size change event or other redraw request
 static int redraw=0; // signal to perform full redraw
 static int update=0; // signal for timeout that require data refresh
@@ -160,6 +160,7 @@ static inline void psort_help(const char *ver,const char *me) { // {{{
 		"\tu       - switch to UTF-8 drawing chars\n"
 		"\tr, ^L   - refresh screen\n"
 		"\tq, ^C   - quit\n"
+		"\t^Z      - suspend (fg to resume)\n"
 		"Examples:\n"
 		"\tpsort -i eth0 -f 'arp or ip'      - count arp or ip packets on eth0\n"
 		"\tpsort -i any -f ''                - count all packets on all interfaces\n"
@@ -845,6 +846,7 @@ int main(int ac,char **av) { // {{{
 					yascreen_printxy(s,hx,hy+4,DA|inverse,"%.*s",sx-2,sy<=6?"":"z      - zero history and restart");
 					yascreen_printxy(s,hx,hy+5,DA|inverse,"%.*s",sx-2,sy<=7?"":"r,^L   - refresh screen");
 					yascreen_printxy(s,hx,hy+6,DA|inverse,"%.*s",sx-2,sy<=8?"":"q,^C   - quit");
+					yascreen_printxy(s,hx,hy+7,DA|inverse,"%.*s",sx-2,sy<=9?"":"^Z     - suspend (fg to resume)");
 				}
 				if (wssx>14+9+6) {
 					char mems[50];
